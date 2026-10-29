@@ -1,0 +1,20 @@
+{
+  "name": "mieci-typing-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local-first vocabulary typing practice with sheep pasture progress.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node tools/serve.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "check": "node tools/check.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "prettier": "3.6.2"
+  }
+}

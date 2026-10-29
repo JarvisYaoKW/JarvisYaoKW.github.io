@@ -1,0 +1,12 @@
+node_modules/
+*.log
+.DS_Store
+.env
+.env.*
+.edgeone/
+coverage/
+test-results/
+data/
+backups/
+*.bin
+*.pdf

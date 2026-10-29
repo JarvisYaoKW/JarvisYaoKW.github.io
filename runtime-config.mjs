@@ -1,1 +1,1 @@
-export const storageMode='browser';
+export const storageMode = 'browser';

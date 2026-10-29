@@ -1,10 +1,84 @@
-.wordbook-heading h2{margin-top:4px}.wordbook-heading p{max-width:62ch}
-.wordbook-list{border-top:1px solid var(--line);margin-top:24px}
-.wordbook-row{display:flex;align-items:center;justify-content:space-between;gap:22px;padding:22px 0;border-bottom:1px solid var(--line)}
-.wordbook-row>div{min-width:0}.wordbook-row h3{font-size:17px;font-weight:600;line-height:1.5;margin:0 0 5px}.wordbook-row p{font-size:13px;line-height:1.8;margin:5px 0 0}.wordbook-row .wordbook-meta{font-size:12px;color:var(--green)}
-.wordbook-row button{flex-shrink:0;min-height:44px}.wordbook-row button:disabled{opacity:.65;cursor:default}
-.wordbook-privacy{font-size:12px;padding-top:10px;line-height:1.9}.wordbook-sources{font-size:12px}.wordbook-sources a{font-size:12px;text-decoration:underline}
-.config-bottom .sidebar-import+.sidebar-import{margin-top:10px}
-.storage-notice{font-size:12px;color:var(--muted);line-height:1.8}
-.book-install-feedback{min-height:24px;font-size:13px;color:var(--green)}
-@media(max-width:700px){.wordbook-row{display:block;padding:20px 0}.wordbook-row button{margin-top:14px}.wordbook-row h3{font-size:16px}.wordbook-row p{font-size:12px}}
+.wordbook-heading h2 {
+  margin-top: 4px;
+}
+.wordbook-heading p {
+  max-width: 62ch;
+}
+.wordbook-list {
+  border-top: 1px solid var(--line);
+  margin-top: 24px;
+}
+.wordbook-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  padding: 22px 0;
+  border-bottom: 1px solid var(--line);
+}
+.wordbook-row > div {
+  min-width: 0;
+}
+.wordbook-row h3 {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.5;
+  margin: 0 0 5px;
+}
+.wordbook-row p {
+  font-size: 13px;
+  line-height: 1.8;
+  margin: 5px 0 0;
+}
+.wordbook-row .wordbook-meta {
+  font-size: 12px;
+  color: var(--green);
+}
+.wordbook-row button {
+  flex-shrink: 0;
+  min-height: 44px;
+}
+.wordbook-row button:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+.wordbook-privacy {
+  font-size: 12px;
+  padding-top: 10px;
+  line-height: 1.9;
+}
+.wordbook-sources {
+  font-size: 12px;
+}
+.wordbook-sources a {
+  font-size: 12px;
+  text-decoration: underline;
+}
+.config-bottom .sidebar-import + .sidebar-import {
+  margin-top: 10px;
+}
+.storage-notice {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.8;
+}
+.book-install-feedback {
+  min-height: 24px;
+  font-size: 13px;
+  color: var(--green);
+}
+@media (max-width: 700px) {
+  .wordbook-row {
+    display: block;
+    padding: 20px 0;
+  }
+  .wordbook-row button {
+    margin-top: 14px;
+  }
+  .wordbook-row h3 {
+    font-size: 16px;
+  }
+  .wordbook-row p {
+    font-size: 12px;
+  }
+}
