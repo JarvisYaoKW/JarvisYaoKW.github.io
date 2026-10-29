@@ -1,0 +1,29 @@
+Bundled word-family supplement (20261029-1)
+
+Lexical relationships and English senses: Princeton WordNet 3.0.
+Source distribution: https://github.com/nltk/nltk_data/blob/gh-pages/packages/corpora/wordnet.zip
+Documentation: https://wordnet.princeton.edu/documentation/wninput5wn
+License: WordNet-LICENSE.txt (preserved in full).
+
+Only explicit lexical derivationally related forms (+) and adverb-to-adjective
+derived-from pointers are used. Edges are made available in both directions.
+Synonyms, antonyms, broad semantic relations and guessed suffix forms are excluded.
+Source POS must match the learner's currently imported senses. Target Chinese
+senses must match the target POS. BNC/FRQ ranks <= 50000, Collins/Oxford entries
+and existing preset members are retained. At most 12 links are kept per root.
+
+Chinese meanings and primary IPA: ECDICT (MIT), source and SHA256 in families-lock.json.
+Supplementary missing US IPA: open-dict-data/ipa-dict en_US (MIT), based on
+cmudict-ipa and syllabify as credited by that project. Only single-reading
+matches are used to avoid assigning an arbitrary homograph pronunciation.
+Source: https://github.com/open-dict-data/ipa-dict/blob/master/data/en_US.txt
+Full license: IPA-DICT-LICENSE.txt. This release does not bundle en_UK data.
+Missing IPA remains explicitly missing and is looked up by the existing practice UI.
+
+The supplement is a read-only resource, separate from personal entries, scores,
+favorites, coins and queues. Manual family definitions take precedence. Each
+target has its own POS-specific Chinese and English definition; a relation is
+not a claim that a suffix preserves every sense of the source word.
+
+Coverage, source hashes and generation rules: families-lock.json.
+Reproducible generator: tools/build-families.py (Python standard library only).

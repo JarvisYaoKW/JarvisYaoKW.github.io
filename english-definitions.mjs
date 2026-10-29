@@ -39,6 +39,16 @@ export function filterDefinitionPOS(value, pos) {
   return { ...value, senses: matches };
 }
 export function englishForPOS(word, supplement = {}, pos = '', data = bundled) {
+  if (supplement.origin === 'wordnet') {
+    const exact = filterDefinitionPOS(
+      {
+        senses: cleanDefinitions(supplement.englishDefinitions),
+        source: supplement.englishDefinitionSource || 'WordNet 3.0',
+      },
+      pos,
+    );
+    if (exact.senses.length) return exact;
+  }
   const primary = filterDefinitionPOS(englishFor(word, supplement, data), pos);
   if (!pos || primary.senses.length) return primary;
   // A bundled noun-only record must not hide a verb sense found by a later lookup.

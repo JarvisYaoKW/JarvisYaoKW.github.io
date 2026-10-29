@@ -25,6 +25,7 @@ import {
   coinHistoryHTML,
 } from './herd-view.mjs';
 import { selectFamily, validFamilyMeaning } from './family-selection.mjs';
+import { familyForEntry, loadFamilyData } from './family-data.mjs';
 import { verbMeanings, selectVerbForms, extensionItems } from './verb-forms.mjs';
 import { senseModel, splitMeanings } from './pronunciation-view.mjs';
 import {
@@ -550,6 +551,7 @@ function senseSections(e) {
 function answerCard(e) {
   const s = e.supplement;
   const forms = selectVerbForms(e);
+  const family = familyForEntry(e);
   return `<div class="answer-card" id="answer-card"><div class="answer-heading"><div><h2>${esc(e.english)}</h2>${pronunciationHeader(e)}<span id="audio-status" class="muted"></span></div><button class="text-btn" data-action="edit" data-key="${esc(e.key)}">编辑词条 ↗</button></div><div class="recognition-control"><button class="text-btn" data-action="recognition" data-key="${esc(e.key)}">${e.recognitionOnly ? '✓ 仅练认义 · 点击恢复拼写' : '以后只练认义，跳过拼写'}</button></div>${senseSections(e)}${englishBlock(e.english, e.supplement)}<div class="examples"><h3>例句</h3>${
     s?.examples?.length
       ? s.examples
@@ -560,7 +562,7 @@ function answerCard(e) {
           )
           .join('')
       : `<p class="muted">${resourceTasks.has(e.key) ? '正在补充例句…' : '暂无例句，可在编辑词条中补充。'}</p>`
-  }</div><details class="word-details"><summary>词形、词族与词源 <span>＋</span></summary>${forms.length ? `<h4>动词形态</h4><div class="word-chips">${forms.map((f) => `<span>${esc(f.word)} <small>${esc(f.label)}</small></span>`).join('')}</div>` : ''}${s?.family?.length ? `<h4>词族</h4><div class="word-chips">${s.family.map((f) => `<span>${esc(f.word)} <small>${esc(f.meaning || f.label || '相关派生词')}</small></span>`).join('')}</div>` : ''}${s?.pendingFamily?.length ? `<details class="pending-family"><summary>待补充词族（不进入默认练习） · ${s.pendingFamily.length}</summary><p class="muted">这些关联词的释义或优先级尚待确认。</p><div class="word-chips">${s.pendingFamily.map((f) => `<span>${esc(f.word)} <small>${esc(f.reason)}</small></span>`).join('')}</div></details>` : ''}<h4>词源记忆</h4><p class="etymology">${esc(s?.etymologyZh || s?.etymology || '尚无可核验的词源资料，可联网重试或手动补充。')}</p>${s?.etymologyZh ? `<p class="muted">${esc(s.etymologySource ? '词根线索来源：有道词典 · ' + s.etymologySource : '词源中文为机器翻译或手动补充，请结合原文理解。')}</p>` : ''}${s?.etymologyZh && s.etymology ? `<details><summary>查看 Wiktionary 词源参考</summary><p class="etymology">${esc(s.etymology)}</p></details>` : ''}<button class="secondary" data-action="extend" data-key="${esc(e.key)}">开始拓展练习 →</button></details><div class="source-row"><span>${sourceLinks(s) || esc(e.source)}</span><button class="text-btn" data-action="refresh-resource" data-key="${esc(e.key)}">${resourceTasks.has(e.key) ? '资料获取中…' : '联网补充 / 重试'}</button></div></div>`;
+  }</div><details class="word-details"><summary>词形、词族与词源 <span>＋</span></summary>${forms.length ? `<h4>动词形态</h4><div class="word-chips">${forms.map((f) => `<span>${esc(f.word)} <small>${esc(f.label)}</small></span>`).join('')}</div>` : ''}${family.length ? `<h4>词族</h4><div class="word-chips">${family.map((f) => `<span>${esc(f.word)} <small>${esc(f.meaning || f.label || '相关派生词')}</small></span>`).join('')}</div>${family.some((f) => f.origin === 'wordnet') ? `<p class="muted"><a href="https://wordnet.princeton.edu/" target="_blank" rel="noopener noreferrer">WordNet 3.0 词族关系</a> · <a href="/wordbooks/WordNet-LICENSE.txt" target="_blank" rel="noopener noreferrer">许可</a> · ECDICT 释义与音标</p>` : ''}` : ''}${s?.pendingFamily?.length ? `<details class="pending-family"><summary>待补充词族（不进入默认练习） · ${s.pendingFamily.length}</summary><p class="muted">这些关联词的释义或优先级尚待确认。</p><div class="word-chips">${s.pendingFamily.map((f) => `<span>${esc(f.word)} <small>${esc(f.reason)}</small></span>`).join('')}</div></details>` : ''}<h4>词源记忆</h4><p class="etymology">${esc(s?.etymologyZh || s?.etymology || '尚无可核验的词源资料，可联网重试或手动补充。')}</p>${s?.etymologyZh ? `<p class="muted">${esc(s.etymologySource ? '词根线索来源：有道词典 · ' + s.etymologySource : '词源中文为机器翻译或手动补充，请结合原文理解。')}</p>` : ''}${s?.etymologyZh && s.etymology ? `<details><summary>查看 Wiktionary 词源参考</summary><p class="etymology">${esc(s.etymology)}</p></details>` : ''}<button class="secondary" data-action="extend" data-key="${esc(e.key)}">开始拓展练习 →</button></details><div class="source-row"><span>${sourceLinks(s) || esc(e.source)}</span><button class="text-btn" data-action="refresh-resource" data-key="${esc(e.key)}">${resourceTasks.has(e.key) ? '资料获取中…' : '联网补充 / 重试'}</button></div></div>`;
 }
 function library() {
   const cat = category(S);
@@ -1134,7 +1136,7 @@ function editModal(key) {
       .map(([v, l]) => `<option value="${v}" ${e?.type === v ? 'selected' : ''}>${l}</option>`)
       .join(
         '',
-      )}</select></label><label class="field">音标<input id="edit-phonetic" value="${esc(e?.phonetic || '')}"></label></div><label class="setting-row"><span>只练认义，不练拼写</span><input id="edit-recognition" type="checkbox" ${e?.recognitionOnly ? 'checked' : ''}></label><label class="field">所属分组（用 | 分隔；留空为未分组）<input id="edit-groups" value="${esc(e?.groups.join('|') || '')}" placeholder="阅读 | 写作"></label><details><summary>例句、词形、词族与词源资料</summary><label class="field">例句（每行 英文 | 中文）<textarea id="edit-examples" rows="3">${esc((e?.supplement?.examples || []).map((x) => x.en + ' | ' + (x.zh || '')).join('\n'))}</textarea></label><label class="field">动词形态（每行 形态标签 | 英文）<textarea id="edit-forms" rows="4" placeholder="过去式 / 过去分词 | applied">${esc((e?.supplement?.forms || []).map((x) => x.label + ' | ' + x.word).join('\n'))}</textarea></label><label class="field">常用词族（每行 英文 | 中文及词性）<textarea id="edit-family" rows="3">${esc((e?.supplement?.family || []).map((x) => x.word + ' | ' + (x.meaning || '')).join('\n'))}</textarea></label><label class="field">词源中文或记忆提示<textarea id="edit-etym" rows="3">${esc(e?.supplement?.etymologyZh || '')}</textarea></label></details><div class="modal-actions"><button class="primary" type="submit">保存词条</button><button class="secondary" type="button" data-action="close-modal">取消</button></div></form>`,
+      )}</select></label><label class="field">音标<input id="edit-phonetic" value="${esc(e?.phonetic || '')}"></label></div><label class="setting-row"><span>只练认义，不练拼写</span><input id="edit-recognition" type="checkbox" ${e?.recognitionOnly ? 'checked' : ''}></label><label class="field">所属分组（用 | 分隔；留空为未分组）<input id="edit-groups" value="${esc(e?.groups.join('|') || '')}" placeholder="阅读 | 写作"></label><details><summary>例句、词形、词族与词源资料</summary><label class="field">例句（每行 英文 | 中文）<textarea id="edit-examples" rows="3">${esc((e?.supplement?.examples || []).map((x) => x.en + ' | ' + (x.zh || '')).join('\n'))}</textarea></label><label class="field">动词形态（每行 形态标签 | 英文）<textarea id="edit-forms" rows="4" placeholder="过去式 / 过去分词 | applied">${esc((e?.supplement?.forms || []).map((x) => x.label + ' | ' + x.word).join('\n'))}</textarea></label><label class="field">常用词族（每行 英文 | 中文及词性）<textarea id="edit-family" rows="3">${esc((e ? familyForEntry(e) : []).map((x) => x.word + ' | ' + (x.meaning || '')).join('\n'))}</textarea></label><label class="field">词源中文或记忆提示<textarea id="edit-etym" rows="3">${esc(e?.supplement?.etymologyZh || '')}</textarea></label></details><div class="modal-actions"><button class="primary" type="submit">保存词条</button><button class="secondary" type="button" data-action="close-modal">取消</button></div></form>`,
   );
   $('#edit-form').onsubmit = (ev) => {
     ev.preventDefault();
@@ -1401,6 +1403,7 @@ function refreshAnswerOnly(key) {
   }
 }
 async function ensureResources(e, force = false) {
+  await loadFamilyData().catch(() => null);
   if (!e || resourceTasks.has(e.key)) return resourceTasks.get(e?.key);
   if (
     e.supplement?.familyVersion === 2 &&
@@ -1647,9 +1650,13 @@ async function extend(key) {
   }
   stopAudio();
   showModal('<h2>正在准备拓展练习…</h2><p>正在读取词形与同源词资料。</p>');
-  await ensureResources(e);
+  await loadFamilyData().catch(() => null);
+  let items = extensionItems(e);
+  if (!items.length || (verbMeanings(e).length && !selectVerbForms(e).length)) {
+    await ensureResources(e);
+    items = extensionItems(e);
+  }
   if (!modal.open) return;
-  const items = extensionItems(e);
   if (!items.length) {
     showModal(
       `<h2>暂时没有可练的拓展资料</h2><p>${verbMeanings(e).length ? '动词词形或同源词资料待补充。' : '当前收录释义没有常用动词义，暂无可练的同源词。'}</p><div class="modal-actions"><button class="primary" data-action="edit" data-key="${esc(e.key)}">编辑词条</button><button class="secondary" data-action="close-modal">返回答案</button></div>`,
@@ -1766,8 +1773,10 @@ async function loadAuxPronunciation(aux, item, force = false) {
       phonetics = lookupPronunciations(raw);
     const english = definitionsFromLookup(raw, item.word);
     if (english.senses.length) {
-      item.englishDefinitions = english.senses;
-      item.englishDefinitionSource = english.source;
+      if (item.origin !== 'wordnet') {
+        item.englishDefinitions = english.senses;
+        item.englishDefinitionSource = english.source;
+      }
     }
     if (phonetics.length) item.phonetics = phonetics;
     item.pronunciationGroups = raw.pronunciationGroups || item.pronunciationGroups || [];
@@ -1814,7 +1823,7 @@ function renderAux() {
     return;
   }
   showModal(
-    `<h2 class="visually-hidden">词义与拼写练习</h2><div class="aux-header"><span class="aux-mode">${aux.type === 'repeat' ? '原词照打' : '词形与词族'}</span><span class="aux-count">${aux.type === 'repeat' ? '已完成 ' + aux.done + ' 次' : aux.index + 1 + ' / ' + aux.items.length}</span></div>${aux.type === 'extend' ? `<div class="aux-tools"><span>原词 ${esc(aux.root)}</span><label><input id="aux-copy" type="checkbox" ${aux.copy ? 'checked' : ''}> 显示灰色答案</label></div>` : ''}<div class="aux-prompt">${aux.type === 'extend' && item.type === 'form' ? `<span class="aux-target-label">${esc(item.label)}</span>` : ''}<p class="aux-meaning">${esc(aux.type === 'extend' && item.type === 'form' ? (item.meaning || '').replace((item.label || '') + ' · ', '') : item.meaning || '')}</p>${englishBlock(item.word, item, item.type === 'form' ? 'verb' : '')}<div id="aux-hint" class="muted">${item.unavailable ? '释义待补充，可跳过此项。' : item.type === 'family' && !item.meaning ? '正在准备中文释义…' : ''}</div></div><div class="typing-line" id="typing-line"><div class="letter-display" id="letter-display" aria-hidden="true">${letterHTML(item.word, aux.text, aux.copy)}</div><input id="aux-input" class="aux-input" aria-label="拓展或反复练习输入" autocomplete="off" spellcheck="false" autocapitalize="off" value="${esc(aux.text)}"></div><div id="aux-pronunciation" class="aux-pronunciation">${auxPronunciationHTML(item)}</div><p id="aux-feedback" class="muted ${aux.feedbackError ? 'is-error' : ''}" role="status" aria-live="polite">${aux.feedbackError ? '还没有完整拼对，可以继续修改。' : compare(aux.text, item.word, 'word', S.settings) ? '✓ 完整拼写正确，按 Enter 继续。' : '直接输入英文，按 Enter 继续。'}</p><div class="modal-actions"><button class="primary" data-action="aux-next">检查 / 继续 <kbd>Enter</kbd></button>${aux.type === 'extend' ? `<button class="secondary" data-action="aux-add">加入主词库</button><button class="text-btn" data-action="aux-skip">跳过此项</button>` : ''}<button class="text-btn" data-action="close-modal">${aux.type === 'repeat' ? '结束照打 Alt' : '返回原答案 Esc'}</button></div>`,
+    `<h2 class="visually-hidden">词义与拼写练习</h2><div class="aux-header"><span class="aux-mode">${aux.type === 'repeat' ? '原词照打' : '词形与词族'}</span><span class="aux-count">${aux.type === 'repeat' ? '已完成 ' + aux.done + ' 次' : aux.index + 1 + ' / ' + aux.items.length}</span></div>${aux.type === 'extend' ? `<div class="aux-tools"><span>原词 ${esc(aux.root)}</span><label><input id="aux-copy" type="checkbox" ${aux.copy ? 'checked' : ''}> 显示灰色答案</label></div>` : ''}<div class="aux-prompt">${aux.type === 'extend' && item.type === 'form' ? `<span class="aux-target-label">${esc(item.label)}</span>` : ''}<p class="aux-meaning">${esc(aux.type === 'extend' && item.type === 'form' ? (item.meaning || '').replace((item.label || '') + ' · ', '') : item.meaning || '')}</p>${englishBlock(item.word, item, item.type === 'form' ? 'verb' : item.pos || '')}<div id="aux-hint" class="muted">${item.unavailable ? '释义待补充，可跳过此项。' : item.type === 'family' && !item.meaning ? '正在准备中文释义…' : ''}</div></div><div class="typing-line" id="typing-line"><div class="letter-display" id="letter-display" aria-hidden="true">${letterHTML(item.word, aux.text, aux.copy)}</div><input id="aux-input" class="aux-input" aria-label="拓展或反复练习输入" autocomplete="off" spellcheck="false" autocapitalize="off" value="${esc(aux.text)}"></div><div id="aux-pronunciation" class="aux-pronunciation">${auxPronunciationHTML(item)}</div><p id="aux-feedback" class="muted ${aux.feedbackError ? 'is-error' : ''}" role="status" aria-live="polite">${aux.feedbackError ? '还没有完整拼对，可以继续修改。' : compare(aux.text, item.word, 'word', S.settings) ? '✓ 完整拼写正确，按 Enter 继续。' : '直接输入英文，按 Enter 继续。'}</p><div class="modal-actions"><button class="primary" data-action="aux-next">检查 / 继续 <kbd>Enter</kbd></button>${aux.type === 'extend' ? `<button class="secondary" data-action="aux-add">加入主词库</button><button class="text-btn" data-action="aux-skip">跳过此项</button>` : ''}<button class="text-btn" data-action="close-modal">${aux.type === 'repeat' ? '结束照打 Alt' : '返回原答案 Esc'}</button></div>`,
   );
   $('#aux-input').focus();
   $('#aux-input').setSelectionRange(aux.text.length, aux.text.length);
@@ -1959,10 +1968,20 @@ function detail(key, load = true) {
   showModal(
     `<h2>${esc(e.english)}</h2>${badges(e)}${answerCard(e)}<div class="modal-actions"><button class="secondary" data-action="edit" data-key="${esc(key)}">编辑词条</button><button class="text-btn" data-action="close-modal">关闭</button></div>`,
   );
-  if (load)
-    ensureResources(e).then(() => {
-      if (modal.open && modal.querySelector('h2')?.textContent === e.english) detail(key, false);
-    });
+  if (load) {
+    const refresh = () => {
+      if (modal.open && modal.querySelector('h2')?.textContent === e.english) {
+        const open = !!modal.querySelector('.word-details')?.open;
+        detail(key, false);
+        if (open && modal.querySelector('.word-details'))
+          modal.querySelector('.word-details').open = true;
+      }
+    };
+    loadFamilyData()
+      .then(refresh)
+      .catch(() => {});
+    ensureResources(e).then(refresh);
+  }
 }
 function navigate(v, fromHistory = false) {
   view = v;
@@ -2375,6 +2394,9 @@ async function init() {
     document.documentElement.dataset.storageMode = storageMode;
     render();
     initializing = false;
+    loadFamilyData()
+      .then(() => refreshAnswerOnly(entry()?.key))
+      .catch(() => {});
     if (current()?.finished) ensureResources(entry());
     if (window.speechSynthesis) speechSynthesis.getVoices();
     if (storageMode === 'browser' && 'serviceWorker' in navigator)

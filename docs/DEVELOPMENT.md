@@ -27,6 +27,19 @@ npm run format
 
 Prettier 仅用于开发。词库 JSON 不参与重排。
 
+## 批量词族资料
+
+`wordbooks/families.json` 是独立的只读资料，已有词库和旧词典缓存会自动读取。它不将派生词批量加入主词库，也不改动轮次、成绩或金币。词族练习中的“加入主词库”仍由使用者自行选择。
+
+生成器使用 Python 3 标准库。下载 WordNet 3.0（NLTK 数据镜像）、ECDICT CSV、ipa-dict 的 en_US.txt 及 LICENSE 后运行：
+
+```sh
+python tools/build-families.py --wordnet /path/wordnet.zip --ecdict /path/ecdict.csv --ipa-us /path/en_US.txt --ipa-license /path/IPA-DICT-LICENSE.txt
+npm test
+```
+
+输入网址、SHA256、覆盖数量和筛选规则记录在 `wordbooks/families-lock.json`；再生成时应核对输入 hash，并随新数据更新资源版本与 Service Worker 缓存版本。原始下载不提交到仓库。词族只采用词典中的派生关联，中文词性须与目标词匹配；缺失音标继续由练习页面联网查询。
+
 ## 浏览器验收
 
 使用独立测试浏览器资料或自建词条，避免在真实进度上随意答题。

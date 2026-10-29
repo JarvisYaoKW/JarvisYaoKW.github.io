@@ -1,5 +1,5 @@
 import { splitMeanings } from './pronunciation-view.mjs';
-import { validFamilyMeaning } from './family-selection.mjs';
+import { familyForEntry } from './family-data.mjs';
 
 const key = (value) =>
   String(value || '')
@@ -61,16 +61,13 @@ export function selectVerbForms(entry, candidates = entry.supplement?.forms || [
   return selected;
 }
 
-export function extensionItems(entry) {
-  const supplement = entry.supplement || {};
+export function extensionItems(entry, familyData) {
   return [
     ...selectVerbForms(entry).map((form) => ({ ...form, type: 'form' })),
-    ...(supplement.family || [])
-      .filter((item) => validFamilyMeaning(item.meaning, !!supplement.manual))
-      .map((item) => ({
-        ...item,
-        type: 'family',
-        label: item.meaning || item.label || '常用派生词',
-      })),
+    ...familyForEntry(entry, familyData).map((item) => ({
+      ...item,
+      type: 'family',
+      label: item.meaning || item.label || '常用派生词',
+    })),
   ];
 }

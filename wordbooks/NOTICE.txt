@@ -7,3 +7,7 @@ Exam tags and translations are reproduced from the pinned CSV. The IELTS core su
 The ECDICT books are not official Shanbay books. The added IELTS Vocabulary Scripture wordlist is user-requested and documented separately in scripture-source-notice.txt. No user progress, favorites, original PDF scans, generated examples, or invented word forms are bundled.
 
 English definitions: pinned ECDICT definition field (MIT). Small gaps have independently worded editorial glosses, explicitly labelled in each entry. Form-only notes describe the source-provided inflection and link to the lemma. Coverage and hashes: english-definitions-lock.json.
+
+Word-family supplement: WordNet 3.0 lexical derivations and adverb/adjective links,
+with POS-matched ECDICT Chinese meanings and IPA. Details, source versions,
+additional IPA attribution and licenses: families-NOTICE.txt and families-lock.json.

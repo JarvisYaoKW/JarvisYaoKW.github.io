@@ -17,18 +17,19 @@ flowchart TD
 
 ## 模块
 
-| 模块                                        | 职责                                               |
-| ------------------------------------------- | -------------------------------------------------- |
-| `engine.mjs`                                | 词条合并、范围、轮次、出题、两次尝试、成绩与加练   |
-| `browser-storage.mjs`                       | IndexedDB、校验、修订号冲突检查、题目草稿          |
-| `web-services.mjs`                          | 浏览器存取、导入、词典与音频适配                   |
-| `bin-parser.mjs`                            | 已支持的 BIN 格式解析，拒绝错误输入                |
-| `herd.mjs` / `herd-view.mjs`                | 正常学习状态到羊状态的映射与展示                   |
-| `pasture-economy.mjs`                       | 金币、交易记录、皮肤编号与兑换                     |
-| `pronunciation-*.mjs`                       | 音标和词性关联、答案展示模型                       |
-| `verb-forms.mjs`                            | 按当前动词义筛选词形，合并同拼写的时态并生成拓展题 |
-| `english-definitions.mjs` / `wordbooks.mjs` | 英文释义与预置词库管理                             |
-| `app.mjs`                                   | 页面、事件、快捷键与答案流程，后续仍适合继续拆分   |
+| 模块                                        | 职责                                                           |
+| ------------------------------------------- | -------------------------------------------------------------- |
+| `engine.mjs`                                | 词条合并、范围、轮次、出题、两次尝试、成绩与加练               |
+| `browser-storage.mjs`                       | IndexedDB、校验、修订号冲突检查、题目草稿                      |
+| `web-services.mjs`                          | 浏览器存取、导入、词典与音频适配                               |
+| `bin-parser.mjs`                            | 已支持的 BIN 格式解析，拒绝错误输入                            |
+| `herd.mjs` / `herd-view.mjs`                | 正常学习状态到羊状态的映射与展示                               |
+| `pasture-economy.mjs`                       | 金币、交易记录、皮肤编号与兑换                                 |
+| `pronunciation-*.mjs`                       | 音标和词性关联、答案展示模型                                   |
+| `verb-forms.mjs`                            | 按当前动词义筛选词形，合并同拼写的时态并生成拓展题             |
+| `family-data.mjs`                           | 加载预置派生关系，按当前词性合并词族及手动资料，不修改学习状态 |
+| `english-definitions.mjs` / `wordbooks.mjs` | 英文释义与预置词库管理                                         |
+| `app.mjs`                                   | 页面、事件、快捷键与答案流程，后续仍适合继续拆分               |
 
 ## 状态约束
 
