@@ -1,4 +1,4 @@
-# 词间 · IELTS Typing Studio
+# 咩词 · IELTS Typing Studio
 
 雅思与四六级词汇打字练习。支持预置词库、导入词库、字母提示、常错本、收藏、词形词族练习与羊群草场进度。
 
