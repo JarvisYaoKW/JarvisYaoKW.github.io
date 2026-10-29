@@ -1,0 +1,22 @@
+{
+  "bookId": "ielts-vocabulary-scripture",
+  "version": "20261028-1",
+  "uniqueEntries": 3632,
+  "chapters": 22,
+  "sha256": "31112c7ca70c84bac36e193cbb198c5e4012d251f46d25ee306c65a29ef4d180",
+  "allHavePhonetic": true,
+  "fields": [
+    "english",
+    "meanings",
+    "phonetic",
+    "groups",
+    "source",
+    "supplement"
+  ],
+  "sourceTypes": [
+    "user-supplied wordlist",
+    "ECDICT MIT",
+    "dictionary lookups"
+  ],
+  "englishDefinitions": "english-definitions-lock.json"
+}

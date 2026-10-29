@@ -1,0 +1,11 @@
+雅思词汇真经 · 22 主题
+
+词表与主题：用户提供的刘洪波《雅思词汇真经》扫描版；按照书中索引和正文核对，合并后 3632 个英文词条，22 个主题。
+中文释义：ECDICT（MIT），另有 résumé、shade-tolerant、El Niño 三项按用户原书核对。
+音标：ECDICT，缺失项通过在线词典补查；short-day 参考 Collins，shade-tolerant 按原书第25页核对。逐词音标来源见 supplement.bookSource.phoneticSource。
+
+ECDICT: https://github.com/skywind3000/ECDICT
+ECDICT 固定提交：ab22ad36302cafc6349a050e2b60894855208055
+完整许可：ECDICT-LICENSE.txt。ECDICT 数据采用 MIT 许可；原书词表及其他资料保留各自来源声明。
+
+本资源包含整理后的学习词条及来源信息。

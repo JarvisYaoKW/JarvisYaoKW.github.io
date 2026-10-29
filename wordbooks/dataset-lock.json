@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "generatedAt": "2026-10-28T06:27:07.436062+00:00",
+  "source": {
+    "repository": "https://github.com/skywind3000/ECDICT",
+    "commit": "ab22ad36302cafc6349a050e2b60894855208055",
+    "csvUrl": "https://raw.githubusercontent.com/skywind3000/ECDICT/ab22ad36302cafc6349a050e2b60894855208055/ecdict.csv",
+    "csvSha256": "d1ecbdf9ee2b920afb6f430ca6b6bb9f559588cf0dff86e04bd255f9390843cc",
+    "csvBytes": 66009548,
+    "licenseUrl": "https://raw.githubusercontent.com/skywind3000/ECDICT/ab22ad36302cafc6349a050e2b60894855208055/LICENSE",
+    "licenseSha256": "f8552dd246f61a4e064569eae6194a01c6b3d63b03bf27c6ca863593c549ed0f",
+    "license": "MIT"
+  },
+  "filter": {
+    "tags": "exact whitespace-separated token match: ielts / cet4 / cet6",
+    "english": "[A-Za-z][A-Za-z0-9 .'/\\-]*\\Z",
+    "meanings": "nonempty translation containing CJK; escaped newlines split; dedupe case-insensitively",
+    "coreRanking": "positive frq ascending; then positive bnc ascending; then alphabetical; first up to 1000 ielts rows",
+    "forms": "only p,d,i,3 exchange values copied; original form prepended when exchange forms exist; no conjugation generated"
+  },
+  "csvRows": 770611,
+  "rawTaggedRows": {
+    "ielts": 5040,
+    "cet4": 3849,
+    "cet6": 5407
+  },
+  "discardedTaggedRows": {
+    "malformed_english": 0,
+    "no_chinese_meaning": 0
+  },
+  "assets": {
+    "ielts-core.json": {
+      "rows": 1000,
+      "bytes": 776053,
+      "sha256": "2e5dfb751fa479052f0123d2618e7396ee361ffd82f451d7e3fe9907a027d11c"
+    },
+    "ielts.json": {
+      "rows": 5040,
+      "bytes": 3525155,
+      "sha256": "72c77d99cb7d43341d7c258783186a824a9fdde47391e5fc86732ab4c477af16"
+    },
+    "cet4.json": {
+      "rows": 3849,
+      "bytes": 2683760,
+      "sha256": "9a8c2c4e971ad4eb294f3c57dd7bc79486340b221f1bfb042fd92796dcd506e9"
+    },
+    "cet6.json": {
+      "rows": 5407,
+      "bytes": 3649248,
+      "sha256": "a98fa25435b5f59d781e76e6b25072ec793090f2f4a7df968e510dedae1aab94"
+    }
+  },
+  "englishDefinitions": "english-definitions-lock.json"
+}

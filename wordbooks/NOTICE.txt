@@ -1,0 +1,9 @@
+Bundled vocabulary data: ECDICT by Linwei
+Source: https://github.com/skywind3000/ECDICT
+Pinned commit: ab22ad36302cafc6349a050e2b60894855208055
+License: MIT (full text in ECDICT-LICENSE.txt)
+
+Exam tags and translations are reproduced from the pinned CSV. The IELTS core subset is ranked by generic corpus frequency, not exam frequency.
+The ECDICT books are not official Shanbay books. The added IELTS Vocabulary Scripture wordlist is user-requested and documented separately in scripture-source-notice.txt. No user progress, favorites, original PDF scans, generated examples, or invented word forms are bundled.
+
+English definitions: pinned ECDICT definition field (MIT). Small gaps have independently worded editorial glosses, explicitly labelled in each entry. Form-only notes describe the source-provided inflection and link to the lemma. Coverage and hashes: english-definitions-lock.json.
