@@ -1,0 +1,3 @@
+# Generated dataset hashes are calculated over UTF-8/LF bytes on every platform.
+wordbooks/families.json text eol=lf
+wordbooks/families-lock.json text eol=lf
