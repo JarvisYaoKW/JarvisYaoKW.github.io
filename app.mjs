@@ -3,7 +3,7 @@ import { syncNavigationIndicator } from './navigation.mjs';
 import {
   loadEnglishDefinitions,
   englishFor,
-  filterDefinitionPOS,
+  englishForPOS,
   definitionsFromLookup,
 } from './english-definitions.mjs';
 import { apiRequest, audioSource, storageMode } from './web-services.mjs';
@@ -25,6 +25,7 @@ import {
   coinHistoryHTML,
 } from './herd-view.mjs';
 import { selectFamily, validFamilyMeaning } from './family-selection.mjs';
+import { verbMeanings, selectVerbForms, extensionItems } from './verb-forms.mjs';
 import { senseModel, splitMeanings } from './pronunciation-view.mjs';
 import {
   previousQuestion,
@@ -379,7 +380,7 @@ function englishSenseHTML(v) {
   );
 }
 function englishBody(word, supplement, pos = '') {
-  const value = filterDefinitionPOS(englishFor(word, supplement), pos);
+  const value = englishForPOS(word, supplement, pos);
   if (!value.senses.length)
     return '<p class="english-empty muted">英文释义尚未补充，可在答案页联网重试。</p>';
   const groups = new Map();
@@ -548,6 +549,7 @@ function senseSections(e) {
 }
 function answerCard(e) {
   const s = e.supplement;
+  const forms = selectVerbForms(e);
   return `<div class="answer-card" id="answer-card"><div class="answer-heading"><div><h2>${esc(e.english)}</h2>${pronunciationHeader(e)}<span id="audio-status" class="muted"></span></div><button class="text-btn" data-action="edit" data-key="${esc(e.key)}">编辑词条 ↗</button></div><div class="recognition-control"><button class="text-btn" data-action="recognition" data-key="${esc(e.key)}">${e.recognitionOnly ? '✓ 仅练认义 · 点击恢复拼写' : '以后只练认义，跳过拼写'}</button></div>${senseSections(e)}${englishBlock(e.english, e.supplement)}<div class="examples"><h3>例句</h3>${
     s?.examples?.length
       ? s.examples
@@ -558,7 +560,7 @@ function answerCard(e) {
           )
           .join('')
       : `<p class="muted">${resourceTasks.has(e.key) ? '正在补充例句…' : '暂无例句，可在编辑词条中补充。'}</p>`
-  }</div><details class="word-details"><summary>词形、词族与词源 <span>＋</span></summary>${s?.forms?.length ? `<h4>动词形态</h4><div class="word-chips">${s.forms.map((f) => `<span>${esc(f.word)} <small>${esc(f.label)}</small></span>`).join('')}</div>` : ''}${s?.family?.length ? `<h4>词族</h4><div class="word-chips">${s.family.map((f) => `<span>${esc(f.word)} <small>${esc(f.meaning || f.label || '相关派生词')}</small></span>`).join('')}</div>` : ''}${s?.pendingFamily?.length ? `<details class="pending-family"><summary>待补充词族（不进入默认练习） · ${s.pendingFamily.length}</summary><p class="muted">这些关联词的释义或优先级尚待确认。</p><div class="word-chips">${s.pendingFamily.map((f) => `<span>${esc(f.word)} <small>${esc(f.reason)}</small></span>`).join('')}</div></details>` : ''}<h4>词源记忆</h4><p class="etymology">${esc(s?.etymologyZh || s?.etymology || '尚无可核验的词源资料，可联网重试或手动补充。')}</p>${s?.etymologyZh ? `<p class="muted">${esc(s.etymologySource ? '词根线索来源：有道词典 · ' + s.etymologySource : '词源中文为机器翻译或手动补充，请结合原文理解。')}</p>` : ''}${s?.etymologyZh && s.etymology ? `<details><summary>查看 Wiktionary 词源参考</summary><p class="etymology">${esc(s.etymology)}</p></details>` : ''}<button class="secondary" data-action="extend" data-key="${esc(e.key)}">开始拓展练习 →</button></details><div class="source-row"><span>${sourceLinks(s) || esc(e.source)}</span><button class="text-btn" data-action="refresh-resource" data-key="${esc(e.key)}">${resourceTasks.has(e.key) ? '资料获取中…' : '联网补充 / 重试'}</button></div></div>`;
+  }</div><details class="word-details"><summary>词形、词族与词源 <span>＋</span></summary>${forms.length ? `<h4>动词形态</h4><div class="word-chips">${forms.map((f) => `<span>${esc(f.word)} <small>${esc(f.label)}</small></span>`).join('')}</div>` : ''}${s?.family?.length ? `<h4>词族</h4><div class="word-chips">${s.family.map((f) => `<span>${esc(f.word)} <small>${esc(f.meaning || f.label || '相关派生词')}</small></span>`).join('')}</div>` : ''}${s?.pendingFamily?.length ? `<details class="pending-family"><summary>待补充词族（不进入默认练习） · ${s.pendingFamily.length}</summary><p class="muted">这些关联词的释义或优先级尚待确认。</p><div class="word-chips">${s.pendingFamily.map((f) => `<span>${esc(f.word)} <small>${esc(f.reason)}</small></span>`).join('')}</div></details>` : ''}<h4>词源记忆</h4><p class="etymology">${esc(s?.etymologyZh || s?.etymology || '尚无可核验的词源资料，可联网重试或手动补充。')}</p>${s?.etymologyZh ? `<p class="muted">${esc(s.etymologySource ? '词根线索来源：有道词典 · ' + s.etymologySource : '词源中文为机器翻译或手动补充，请结合原文理解。')}</p>` : ''}${s?.etymologyZh && s.etymology ? `<details><summary>查看 Wiktionary 词源参考</summary><p class="etymology">${esc(s.etymology)}</p></details>` : ''}<button class="secondary" data-action="extend" data-key="${esc(e.key)}">开始拓展练习 →</button></details><div class="source-row"><span>${sourceLinks(s) || esc(e.source)}</span><button class="text-btn" data-action="refresh-resource" data-key="${esc(e.key)}">${resourceTasks.has(e.key) ? '资料获取中…' : '联网补充 / 重试'}</button></div></div>`;
 }
 function library() {
   const cat = category(S);
@@ -1480,12 +1482,14 @@ async function ensureResources(e, force = false) {
         phonetics,
         pronunciationGroups: raw.pronunciationGroups || [],
         pronunciationVersion: raw.pronunciationVersion || 1,
-        forms:
+        forms: selectVerbForms(
+          e,
           old.manual && old.forms?.length
             ? old.forms
             : shape.forms?.length
               ? shape.forms
               : old.forms || [],
+        ),
         family: shape.family,
         pendingFamily: familySelection.pendingFamily,
         familyVersion: 2,
@@ -1642,25 +1646,13 @@ async function extend(key) {
     return;
   }
   stopAudio();
-  showModal(
-    '<h2>正在准备拓展练习…</h2><p>动词形态在前，常用派生词在后。首次可能需要联网补充。</p>',
-  );
+  showModal('<h2>正在准备拓展练习…</h2><p>正在读取词形与同源词资料。</p>');
   await ensureResources(e);
   if (!modal.open) return;
-  const sup = e.supplement || {},
-    items = [
-      ...(sup.forms || []).map((f) => ({
-        ...f,
-        type: 'form',
-        meaning: f.label + ' · ' + e.meanings.join('；'),
-      })),
-      ...(sup.family || [])
-        .filter((f) => validFamilyMeaning(f.meaning, !!sup.manual))
-        .map((f) => ({ ...f, type: 'family', label: f.meaning || f.label || '常用派生词' })),
-    ];
+  const items = extensionItems(e);
   if (!items.length) {
     showModal(
-      `<h2>暂时没有可练的拓展资料</h2><p>这个词的词形或词族尚未取得可靠数据。可以联网重试，或在词条里补充；没有生成未经核验的变化。</p><div class="modal-actions"><button class="primary" data-action="edit" data-key="${esc(e.key)}">手动补充</button><button class="secondary" data-action="close-modal">返回答案</button></div>`,
+      `<h2>暂时没有可练的拓展资料</h2><p>${verbMeanings(e).length ? '动词词形或同源词资料待补充。' : '当前收录释义没有常用动词义，暂无可练的同源词。'}</p><div class="modal-actions"><button class="primary" data-action="edit" data-key="${esc(e.key)}">编辑词条</button><button class="secondary" data-action="close-modal">返回答案</button></div>`,
     );
     return;
   }

@@ -18,6 +18,7 @@ const ABBR = {
   aux: 'verb',
   n: 'noun',
   adj: 'adjective',
+  a: 'adjective',
   adv: 'adverb',
   pron: 'pronoun',
   prep: 'preposition',
@@ -52,7 +53,9 @@ export function splitMeanings(meanings) {
   };
   for (const raw of meanings || []) {
     const matches = [
-      ...String(raw).matchAll(/\b(adj|adv|vt|vi|aux|prep|pron|conj|interj|det|art|num|n|v)\.\s*/gi),
+      ...String(raw).matchAll(
+        /\b(adj|adv|vt|vi|aux|prep|pron|conj|interj|det|art|num|n|v|a)\.\s*/gi,
+      ),
     ];
     if (!matches.length) {
       add('', raw);

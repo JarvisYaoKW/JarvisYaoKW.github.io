@@ -36,7 +36,19 @@ export function filterDefinitionPOS(value, pos) {
   const matches = value.senses
     .filter((s) => s.pos === pos)
     .sort((a, b) => Number(!!b.lemma) - Number(!!a.lemma));
-  return matches.length ? { ...value, senses: matches } : value;
+  return { ...value, senses: matches };
+}
+export function englishForPOS(word, supplement = {}, pos = '', data = bundled) {
+  const primary = filterDefinitionPOS(englishFor(word, supplement, data), pos);
+  if (!pos || primary.senses.length) return primary;
+  // A bundled noun-only record must not hide a verb sense found by a later lookup.
+  return filterDefinitionPOS(
+    {
+      senses: cleanDefinitions(supplement?.englishDefinitions),
+      source: supplement?.englishDefinitionSource || '',
+    },
+    pos,
+  );
 }
 export async function loadEnglishDefinitions() {
   if (bundled) return bundled;

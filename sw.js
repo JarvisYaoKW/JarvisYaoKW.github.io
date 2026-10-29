@@ -1,4 +1,4 @@
-const CACHE = 'cijian-browser-v10-pasture-coins';
+const CACHE = 'cijian-browser-v11-verb-sense-guard';
 const SHELL = [
   '/',
   '/index.html',
@@ -18,6 +18,7 @@ const SHELL = [
   '/pronunciation-view.mjs',
   '/pronunciation-data.mjs',
   '/family-selection.mjs',
+  '/verb-forms.mjs',
   '/runtime-config.mjs',
   '/web-services.mjs',
   '/browser-storage.mjs',
