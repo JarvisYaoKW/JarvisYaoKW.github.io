@@ -1,29 +1,31 @@
-Bundled word-family supplement (20261029-1)
+Complete word-family supplement (20261104-1)
 
-Lexical relationships and English senses: Princeton WordNet 3.0.
-Source distribution: https://github.com/nltk/nltk_data/blob/gh-pages/packages/corpora/wordnet.zip
-Documentation: https://wordnet.princeton.edu/documentation/wninput5wn
-License: WordNet-LICENSE.txt (preserved in full).
+Relations and English definitions: Princeton WordNet 3.0 (WordNet-LICENSE.txt).
+Chinese definitions and primary IPA: ECDICT, pinned inputs in families-lock.json.
+Supplementary single-reading US IPA: ipa-dict en_US (IPA-DICT-LICENSE.txt).
 
-Only explicit lexical derivationally related forms (+) and adverb-to-adjective
-derived-from pointers are used. Edges are made available in both directions.
-Synonyms, antonyms, broad semantic relations and guessed suffix forms are excluded.
-Source POS must match the learner's currently imported senses. Target Chinese
-senses must match the target POS. BNC/FRQ ranks <= 50000, Collins/Oxford entries
-and existing preset members are retained. At most 12 links are kept per root.
+The generator traverses explicit lexical sense nodes, never jumping between
+synonyms or between unconnected senses of a spelling. Multi-step paths are
+preserved. Derivational pointers require compatible morphology; irregular
+stem pairs are explicitly listed in tools/family_graph.py. Prefix counterparts
+require both an explicit WordNet antonym pointer and a matching prefix. Relational
+adjectives require an explicit pertainym link plus matching morphology.
+Three editorial relationship bridges reference Wiktionary pages for act/active,
+active/activate and create/creator. Their references are retained in links.
+Creator's corrupted source Chinese is repaired with an explicitly labelled
+editorial meaning. No Wiktionary definition prose is reproduced.
 
-Chinese meanings and primary IPA: ECDICT (MIT), source and SHA256 in families-lock.json.
-Supplementary missing US IPA: open-dict-data/ipa-dict en_US (MIT), based on
-cmudict-ipa and syllabify as credited by that project. Only single-reading
-matches are used to avoid assigning an arbitrary homograph pronunciation.
-Source: https://github.com/open-dict-data/ipa-dict/blob/master/data/en_US.txt
-Full license: IPA-DICT-LICENSE.txt. This release does not bundle en_UK data.
-Missing IPA remains explicitly missing and is looked up by the existing practice UI.
+Every intermediate and target needs a POS-matched Chinese definition. Archaic
+or corrupted Chinese records are excluded. Common/extended frequency metadata
+is retained; there is no fixed member-count cap. Coverage is not exhaustive.
 
-The supplement is a read-only resource, separate from personal entries, scores,
-favorites, coins and queues. Manual family definitions take precedence. Each
-target has its own POS-specific Chinese and English definition; a relation is
-not a claim that a suffix preserves every sense of the source word.
+families.json is the complete audit dataset. The browser requests only the
+current initial from families/a.json ... families/z.json, caches each pack,
+and uses existing cached packs offline. A never-downloaded pack needs a network
+connection to the site. Vocabulary relations themselves are prebuilt; they do
+not require a live external dictionary search. Audio and missing IPA may still
+use the existing pronunciation services.
 
-Coverage, source hashes and generation rules: families-lock.json.
-Reproducible generator: tools/build-families.py (Python standard library only).
+This is a read-only dictionary overlay. Personal vocabulary and progress are
+not replaced; manual meanings take precedence. Details: families-lock.json;
+rebuild: tools/build-families.py and tools/family_graph.py.

@@ -38,7 +38,7 @@ python tools/build-families.py --wordnet /path/wordnet.zip --ecdict /path/ecdict
 npm test
 ```
 
-输入网址、SHA256、覆盖数量和筛选规则记录在 `wordbooks/families-lock.json`；再生成时应核对输入 hash，并随新数据更新资源版本与 Service Worker 缓存版本。原始下载不提交到仓库。词族只采用词典中的派生关联，中文词性须与目标词匹配；缺失音标继续由练习页面联网查询。
+输入网址、SHA256、覆盖数量和筛选规则记录在 `wordbooks/families-lock.json`；再生成时应核对输入 hash，并随新数据更新资源版本与 Service Worker 缓存版本。原始下载不提交到仓库。词族使用义项节点遍历多层派生链；限定有构词依据的关系，保留逐步证据。完整审计资料为 families.json，浏览器按首字母加载 families/\*.json，已下载包可离线使用。没有固定成员数量上限；缺失音标继续由练习页面联网查询。
 
 ## 浏览器验收
 

@@ -1,4 +1,4 @@
-const CACHE = 'cijian-browser-v12-word-families';
+const CACHE = 'cijian-browser-v13-complete-families';
 const SHELL = [
   '/',
   '/index.html',
@@ -19,7 +19,6 @@ const SHELL = [
   '/pronunciation-data.mjs',
   '/family-selection.mjs',
   '/family-data.mjs',
-  '/wordbooks/families.json?v=20261029-1',
   '/verb-forms.mjs',
   '/runtime-config.mjs',
   '/web-services.mjs',

@@ -12,6 +12,7 @@ import re
 import zipfile
 from collections import Counter, defaultdict
 from pathlib import Path
+from family_graph import lexical_graph, expand_families
 
 POS = {"n": "noun", "v": "verb", "a": "adjective", "s": "adjective", "r": "adverb"}
 MARK = {"noun": "n.", "verb": "v.", "adjective": "adj.", "adverb": "adv."}
@@ -28,7 +29,7 @@ def meanings_by_pos(values):
         for i, match in enumerate(matches):
             pos = ABBR.get(match[1].lower())
             text = value[match.end():matches[i + 1].start() if i + 1 < len(matches) else None].strip(" ;；\n")
-            if pos and re.search(r"[\u3400-\u9fff]", text) and not RESTRICTED.search(text):
+            if pos and '\ufffd' not in text and re.search(r"[\u3400-\u9fff]", text) and not RESTRICTED.search(text):
                 if text not in result[pos]:
                     result[pos].append(text)
     return result
@@ -70,34 +71,9 @@ def main():
 
     archive = zipfile.ZipFile(args.wordnet)
     nodes = synsets(archive)
-    edges = defaultdict(dict)
-
-    def add(word, root_pos, target, pos, relation, source_id, target_id, definition):
-        if word not in roots or root_pos not in roots[word] or target == word:
-            return
-        if not WORD.fullmatch(word) or not WORD.fullmatch(target):
-            return
-        entry = edges[word].setdefault((root_pos, target, pos), {"rootPos": root_pos, "word": target, "pos": pos, "relation": relation, "evidence": [], "definitions": []})
-        evidence = {"from": source_id, "to": target_id}
-        if evidence not in entry["evidence"]:
-            entry["evidence"].append(evidence)
-        if definition not in entry["definitions"]:
-            entry["definitions"].append(definition)
-
-    for (part, offset), node in nodes.items():
-        for symbol, target_offset, target_part, indices in node["pointers"]:
-            if not (symbol == "+" or (symbol == "\\" and node["pos"] == "adverb")):
-                continue
-            source_index, target_index = int(indices[:2], 16), int(indices[2:], 16)
-            target_node = nodes.get((target_part.replace("s", "a"), target_offset))
-            if not source_index or not target_index or not target_node:
-                continue
-            word, target = node["words"][source_index - 1], target_node["words"][target_index - 1]
-            relation = "adverb-adjective" if symbol == "\\" else "derivation"
-            add(word, node["pos"], target, target_node["pos"], relation, part + offset, target_part + target_offset, target_node["definition"])
-            add(target, target_node["pos"], word, node["pos"], relation, target_part + target_offset, part + offset, node["definition"])
-
-    needed = {edge["word"] for row in edges.values() for edge in row.values()}
+    graph, sense_definitions, links = lexical_graph(nodes)
+    # Also expose complete families when entering through a non-preset member.
+    needed = {state[0] for state in graph}
     dictionary = {}
     with args.ecdict.open(encoding="utf-8-sig", newline="") as stream:
         for row in csv.DictReader(stream):
@@ -105,28 +81,17 @@ def main():
                 continue
             senses = meanings_by_pos(row["translation"].replace("\\n", "\n").splitlines())
             rank = min([int(row[k]) for k in ["bnc", "frq"] if row[k].isdigit() and int(row[k]) > 0] or [999999])
-            if rank > 50000 and not row["collins"].strip("0") and row["oxford"] != "1" and row["word"] not in roots:
-                continue
-            dictionary[row["word"]] = {"senses": senses, "phonetic": row["phonetic"], "rank": rank}
+            common = rank <= 50000 or bool(row["collins"].strip("0")) or row["oxford"] == "1" or row["word"] in roots
+            dictionary[row["word"]] = {"senses": senses, "phonetic": row["phonetic"], "rank": rank, "common": common}
 
-    entries, members = {}, {}
-    relations = Counter()
-    for root, row in sorted(edges.items()):
-        ready = [edge for edge in row.values() if edge["word"] in dictionary and edge["pos"] in dictionary[edge["word"]]["senses"]]
-        ready.sort(key=lambda edge: (edge["relation"] != "adverb-adjective", dictionary[edge["word"]]["rank"], edge["word"], edge["rootPos"]))
-        if not ready:
-            continue
-        entries[root] = []
-        for edge in ready[:12]:
-            member_id = edge["word"] + "#" + edge["pos"]
-            source = dictionary[edge["word"]]
-            member = members.setdefault(member_id, {"word": edge["word"], "pos": edge["pos"], "meaning": MARK[edge["pos"]] + " " + "；".join(source["senses"][edge["pos"]]), "phonetic": source["phonetic"], "englishDefinitions": []})
-            for definition in edge["definitions"]:
-                sense = {"pos": edge["pos"], "definition": definition}
-                if sense not in member["englishDefinitions"]:
-                    member["englishDefinitions"].append(sense)
-            entries[root].append({"member": member_id, "rootPos": edge["rootPos"], "relation": edge["relation"], "evidence": edge["evidence"]})
-            relations[edge["relation"]] += 1
+    # Small editorial repair for a source entry whose Chinese bytes are corrupted.
+    # Its existence and relation are independently evidenced by WordNet/Wiktionary.
+    dictionary['creator'] = dict(senses={'noun': ['创造者；创作者']}, phonetic='', rank=10000, common=True, meaningSource='编写释义 · 词典义项核对')
+    preset_roots = dict(roots)
+    for word, record in dictionary.items():
+        roots[word].update(record['senses'])
+    entries, members, links = expand_families(roots, dictionary, graph, sense_definitions, links, MARK)
+    relations = Counter(edge['relation'] for row in entries.values() for edge in row)
 
     ipa_filled = 0
     if args.ipa_us:
@@ -146,12 +111,23 @@ def main():
                 ipa_filled += 1
         (args.out / "IPA-DICT-LICENSE.txt").write_bytes(args.ipa_license.read_bytes())
 
-    output = {"schema": 1, "version": "20261029-1", "sources": {"relations": "Princeton WordNet 3.0", "meanings": "ECDICT · MIT"}, "entries": entries, "members": dict(sorted(members.items()))}
+    output = {"schema": 1, "version": "20261104-1", "sources": {"relations": "Princeton WordNet 3.0", "meanings": "ECDICT · MIT"}, "entries": entries, "members": dict(sorted(members.items())), "links": links}
     encoded = (json.dumps(output, ensure_ascii=False, separators=(",", ":")) + "\n").encode()
     (args.out / "families.json").write_bytes(encoded)
+    # Browser loads only the current initial's shard, not the entire audit dataset.
+    shard_dir = args.out / 'families'
+    shard_dir.mkdir(exist_ok=True)
+    for letter in 'abcdefghijklmnopqrstuvwxyz':
+        selected = {word: row for word, row in entries.items() if word.startswith(letter)}
+        ids = {edge['member'] for row in selected.values() for edge in row}
+        shard = {**output, 'entries': selected, 'members': {identifier: members[identifier] for identifier in sorted(ids)}, 'links': {}}
+        (shard_dir / (letter + '.json')).write_bytes((json.dumps(shard, ensure_ascii=False, separators=(',', ':')) + '\n').encode())
     (args.out / "WordNet-LICENSE.txt").write_bytes(archive.read("wordnet/LICENSE"))
-    report = {"version": output["version"], "rootCount": len(roots), "coveredRoots": len(entries), "members": len(members), "relations": dict(relations), "relationCount": sum(relations.values()), "adjectiveRootsWithAdverbs": sum(any(edge["rootPos"] == "adjective" and members[edge["member"]]["pos"] == "adverb" for edge in row) for row in entries.values()), "books": {key: {"words": len(words), "coveredRoots": sum(word in entries for word in words)} for key, words in book_keys.items()}, "sources": [{"url": "https://raw.githubusercontent.com/nltk/nltk_data/96f9b3252457a2b97e52aec64c3dfceeb5c312d5/packages/corpora/wordnet.zip", "sha256": hashlib.sha256(args.wordnet.read_bytes()).hexdigest()}, {"url": "https://raw.githubusercontent.com/skywind3000/ECDICT/9c46923fb81a2eb6c264a3a1689562ea7bc56b6a/ecdict.csv", "sha256": hashlib.sha256(args.ecdict.read_bytes()).hexdigest()}], "outputSHA256": hashlib.sha256(encoded).hexdigest(), "filters": ["explicit lexical derivation or adverb/adjective pointer", "current source POS", "matching Chinese target POS", "BNC/FRQ top 50000 or Collins/Oxford/preset member", "at most 12 relations per root", "no guessed suffix forms or synonym edges"]}
+    report = {"version": output["version"], "rootCount": len(preset_roots), "coveredRoots": sum(word in entries for word in preset_roots), "indexedRoots": len(entries), "members": len(members), "relations": dict(relations), "relationCount": sum(relations.values()), "adjectiveRootsWithAdverbs": sum(any(edge["rootPos"] == "adjective" and members[edge["member"]]["pos"] == "adverb" for edge in row) for row in entries.values()), "books": {key: {"words": len(words), "coveredRoots": sum(word in entries for word in words)} for key, words in book_keys.items()}, "sources": [{"url": "https://raw.githubusercontent.com/nltk/nltk_data/96f9b3252457a2b97e52aec64c3dfceeb5c312d5/packages/corpora/wordnet.zip", "sha256": hashlib.sha256(args.wordnet.read_bytes()).hexdigest()}, {"url": "https://raw.githubusercontent.com/skywind3000/ECDICT/9c46923fb81a2eb6c264a3a1689562ea7bc56b6a/ecdict.csv", "sha256": hashlib.sha256(args.ecdict.read_bytes()).hexdigest()}], "outputSHA256": hashlib.sha256(encoded).hexdigest(), "filters": ["explicit lexical derivation or adverb/adjective pointer", "current source POS", "matching Chinese target POS", "all POS-matched Chinese senses; frequency marks common members", "sense-specific multi-step paths; no fixed member-count truncation", "explicit prefix-antonym pairs and morphologically matching pertainyms; no synonym edges or invented words"]}
     report["ipaFilledFromUS"] = ipa_filled
+    report['presetRelationCount'] = sum(len(entries.get(word, [])) for word in preset_roots)
+    report['presetAdjectiveRootsWithAdverbs'] = sum(any(edge['rootPos'] == 'adjective' and members[edge['member']]['pos'] == 'adverb' for edge in entries.get(word, [])) for word in preset_roots)
+    report['maxMembersPerRoot'] = max(map(len, entries.values()))
     report["missingIPA"] = sorted({member["word"] for member in members.values() if not member["phonetic"]})
     if args.ipa_us:
         report["sources"].append({"url": "https://raw.githubusercontent.com/open-dict-data/ipa-dict/44accfb5b0c4c7c146e666c9c7161a5b66e61720/data/en_US.txt", "sha256": hashlib.sha256(args.ipa_us.read_bytes()).hexdigest()})

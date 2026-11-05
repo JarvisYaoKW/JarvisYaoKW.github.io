@@ -1,34 +1,39 @@
 import { splitMeanings } from './pronunciation-view.mjs';
 import { validFamilyMeaning } from './family-selection.mjs';
 
-let bundled = null;
-let pending = null;
+let bundled = { schema: 1, entries: Object.create(null), members: Object.create(null) };
+const loaded = new Set();
+const pending = new Map();
 const key = (value) =>
   String(value || '')
     .trim()
     .toLowerCase();
 
-export async function loadFamilyData() {
-  if (bundled) return bundled;
-  if (pending) return pending;
-  pending = (async () => {
+export async function loadFamilyData(word = '') {
+  const letter = key(word).slice(0, 1);
+  if (!/^[a-z]$/.test(letter) || loaded.has(letter)) return bundled;
+  if (pending.has(letter)) return pending.get(letter);
+  const task = (async () => {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 10000);
+    const timer = setTimeout(() => controller.abort(), 20000);
     try {
-      const response = await fetch('/wordbooks/families.json?v=20261029-1', {
+      const response = await fetch('/wordbooks/families/' + letter + '.json?v=20261104-1', {
         signal: controller.signal,
       });
       if (!response.ok) throw Error('预置词族资料暂时无法加载');
       const value = await response.json();
       if (value.schema !== 1 || !value.entries || !value.members) throw Error('词族资料不完整');
-      bundled = value;
+      Object.assign(bundled.entries, value.entries);
+      Object.assign(bundled.members, value.members);
+      loaded.add(letter);
       return bundled;
     } finally {
       clearTimeout(timer);
-      pending = null;
+      pending.delete(letter);
     }
   })();
-  return pending;
+  pending.set(letter, task);
+  return task;
 }
 
 // Read-only overlay: existing imports and dictionary caches gain the new data
@@ -50,9 +55,10 @@ export function familyForEntry(entry, data = bundled) {
           origin: 'wordnet',
           relation: edge.relation,
           relationSource: 'Princeton WordNet 3.0',
-          meaningSource: 'ECDICT · MIT',
+          meaningSource: member.meaningSource || 'ECDICT · MIT',
           englishDefinitionSource: 'WordNet 3.0',
           evidence: edge.evidence,
+          via: edge.via || [entry.english, member.word],
           phonetics: member.phonetic
             ? [
                 {
@@ -73,10 +79,10 @@ export function familyForEntry(entry, data = bundled) {
   return candidates
     .filter((item) => {
       const word = key(item.word);
-      if (!word || word === key(entry.english) || seen.has(word)) return false;
-      seen.add(word);
+      const identity = word + '#' + (item.pos || splitMeanings([item.meaning])[0]?.pos || '');
+      if (!word || word === key(entry.english) || seen.has(identity)) return false;
+      seen.add(identity);
       return true;
     })
-    .slice(0, 12)
     .map((item) => ({ ...item, pos: item.pos || splitMeanings([item.meaning])[0]?.pos || '' }));
 }

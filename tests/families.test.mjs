@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { familyForEntry } from '../family-data.mjs';
+import { familyForEntry, loadFamilyData } from '../family-data.mjs';
 import { extensionItems, selectVerbForms } from '../verb-forms.mjs';
 import { englishForPOS } from '../english-definitions.mjs';
 import { splitMeanings } from '../pronunciation-view.mjs';
@@ -33,17 +33,14 @@ test('adjective families include a real adverb with its own Chinese, English and
 });
 
 test('family links require the root POS currently imported, even in old caches', () => {
-  const noun = familyForEntry({ english: 'clear', meanings: ['n. 空地'] }, data);
+  const noun = familyForEntry({ english: 'clear', meanings: ['adj. 清楚的'] }, data);
   assert.equal(
-    noun.some((item) => item.word === 'clearly'),
+    noun.some((item) => item.word === 'clearance'),
     false,
   );
   const verb = familyForEntry({ english: 'clear', meanings: ['vt. 清除'] }, data);
   assert.ok(verb.some((item) => item.word === 'clearance'));
-  assert.equal(
-    verb.some((item) => item.word === 'clearly'),
-    false,
-  );
+  assert.ok(verb.every((item) => item.evidence.length));
 });
 
 test('adding a verb family member never turns a noun root into a tense exercise', () => {
@@ -82,6 +79,11 @@ test('source-based families do not invent an -ly word or use a synonym edge', ()
   );
   assert.ok(family.some((item) => item.word === 'friendliness'));
   assert.ok(family.every((item) => item.evidence?.length));
+  assert.ok(
+    !familyForEntry({ english: 'clear', meanings: ['adj. 清楚的'] }, data).some(
+      (item) => item.word === 'limpid',
+    ),
+  );
   assert.deepEqual(
     familyForEntry(
       { english: 'constructor', meanings: ['n. 建造者'] },
@@ -107,7 +109,7 @@ test('family English uses the verified target POS rather than a bundled other se
 
 test('published word-family data matches its audit and has complete, licensed evidence', () => {
   assert.equal(createHash('sha256').update(bytes).digest('hex'), lock.outputSHA256);
-  assert.equal(Object.keys(data.entries).length, lock.coveredRoots);
+  assert.equal(Object.keys(data.entries).length, lock.indexedRoots);
   assert.equal(Object.keys(data.members).length, lock.members);
   assert.equal(Object.values(data.entries).flat().length, lock.relationCount);
   assert.ok(
@@ -116,9 +118,28 @@ test('published word-family data matches its audit and has complete, licensed ev
     ),
   );
   for (const [word, edges] of Object.entries(data.entries)) {
-    assert.ok(edges.length <= 12, word);
     for (const edge of edges) {
-      assert.ok(['adverb-adjective', 'derivation'].includes(edge.relation), word);
+      assert.ok(
+        [
+          'adverb-adjective',
+          'derivation',
+          'multi-step',
+          'prefix',
+          'pertainym',
+          'reviewed-family',
+        ].includes(edge.relation),
+        word,
+      );
+      assert.ok(edge.path.length > 0);
+      assert.equal(edge.via[0], word);
+      assert.equal(edge.via.at(-1), data.members[edge.member].word);
+      for (let i = 0; i < edge.path.length; i++) {
+        const link = data.links[edge.path[i]];
+        assert.ok(link);
+        assert.equal(link.source.split('#')[0], edge.via[i]);
+        assert.equal(link.target.split('#')[0], edge.via[i + 1]);
+        if (i) assert.equal(data.links[edge.path[i - 1]].toSense, link.fromSense);
+      }
       assert.ok(edge.evidence.length, word);
       const member = data.members[edge.member];
       assert.ok(member, word);
@@ -133,6 +154,80 @@ test('published word-family data matches its audit and has complete, licensed ev
         word,
       );
       assert.match(member.meaning, /[\u3400-\u9fff]/u);
+    }
+  }
+});
+
+test('multi-step families work in reverse and retain more than twelve members', () => {
+  for (const word of ['create', 'creative', 'creation']) {
+    const words = familyForEntry(
+      { english: word, meanings: ['n. 创作', 'v. 创造', 'adj. 创造的'] },
+      data,
+    ).map((item) => item.word);
+    for (const target of ['creativity', 'creatively'])
+      assert.ok(words.includes(target), word + ' → ' + target);
+  }
+  assert.ok(
+    familyForEntry({ english: 'create', meanings: ['v. 创造'] }, data).some(
+      (item) => item.word === 'creator',
+    ),
+  );
+  const act = familyForEntry({ english: 'act', meanings: ['v. 行动'] }, data);
+  assert.ok(act.length > 12);
+  assert.ok(act.some((item) => item.word === 'activation'));
+  assert.ok(act.some((item) => item.word === 'actively'));
+  const decide = familyForEntry({ english: 'decide', meanings: ['v. 决定'] }, data);
+  assert.ok(decide.some((item) => item.word === 'indecisively'));
+  assert.ok(decide.every((item) => item.word !== 'determine'));
+});
+
+test('letter packs share downloads, survive another failed pack, and retry safely', async () => {
+  const original = globalThis.fetch;
+  const calls = [];
+  let fail = true;
+  globalThis.fetch = async (url) => {
+    calls.push(url);
+    if (url.includes('/z.') && fail) throw Error('offline fixture');
+    const letter = url.match(/families\/([a-z])\.json/)[1];
+    return {
+      ok: true,
+      json: async () =>
+        JSON.parse(
+          readFileSync(new URL('../wordbooks/families/' + letter + '.json', import.meta.url)),
+        ),
+    };
+  };
+  try {
+    await Promise.all([loadFamilyData('create'), loadFamilyData('creative')]);
+    assert.equal(calls.length, 1);
+    assert.ok(
+      familyForEntry({ english: 'create', meanings: ['v. 创造'] }).some(
+        (item) => item.word === 'creativity',
+      ),
+    );
+    await assert.rejects(loadFamilyData('zest'));
+    await loadFamilyData('create');
+    assert.equal(calls.length, 2);
+    fail = false;
+    await loadFamilyData('zest');
+    assert.equal(calls.length, 3);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('shards contain exactly the indexed records and their target definitions', () => {
+  for (const letter of 'abcdefghijklmnopqrstuvwxyz') {
+    const shard = JSON.parse(
+      readFileSync(new URL('../wordbooks/families/' + letter + '.json', import.meta.url)),
+    );
+    assert.equal(shard.version, data.version);
+    const expected = Object.keys(data.entries).filter((word) => word.startsWith(letter));
+    assert.deepEqual(Object.keys(shard.entries), expected);
+    for (const word of expected) {
+      assert.deepEqual(shard.entries[word], data.entries[word]);
+      for (const edge of shard.entries[word])
+        assert.deepEqual(shard.members[edge.member], data.members[edge.member]);
     }
   }
 });
