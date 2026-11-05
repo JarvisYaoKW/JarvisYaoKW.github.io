@@ -1,3 +1,4 @@
+import { practiceShortcut } from './shortcuts.mjs';
 import { ensureWallet, selectSkin, redeemSkin } from './pasture-economy.mjs';
 import { syncNavigationIndicator } from './navigation.mjs';
 import {
@@ -87,8 +88,7 @@ let S,
   audio = null,
   audioEpoch = 0,
   resourceTasks = new Map(),
-  initializing = true,
-  fnSeen = false;
+  initializing = true;
 const app = $('#app'),
   modal = $('#modal');
 let review = null;
@@ -107,7 +107,7 @@ function previousButton() {
     (previousQuestion(S, reviewedQuestion() ? review.index : undefined)
       ? ''
       : 'disabled title="还没有上一题"') +
-    '>上一题</button>'
+    '>上一题 <kbd>Page Up</kbd></button>'
   );
 }
 function reviewLimit() {
@@ -264,13 +264,13 @@ function badges(e) {
   return `<div class="badges">${e.favorite ? '<span class="badge favorite">' + icons.filled + ' 已收藏</span>' : ''}${st.wrong ? `<span class="badge wrong">常错 · 已错 ${st.wrong} 次</span>` : ''}</div>`;
 }
 function favoriteButton(e) {
-  return `<button class="favorite-btn ${e.favorite ? 'on' : ''}" data-action="favorite" data-key="${esc(e.key)}" aria-label="${e.favorite ? '取消收藏' : '收藏'} ${esc(e.english)}" title="${e.favorite ? '取消收藏' : '收藏并加入加练'}">${e.favorite ? icons.filled : icons.star}</button>`;
+  return `<button class="favorite-btn ${e.favorite ? 'on' : ''}" data-action="favorite" data-key="${esc(e.key)}" aria-label="${e.favorite ? '取消收藏' : '收藏'} ${esc(e.english)}" title="${e.favorite ? '取消收藏' : '收藏并加入加练'}${view === 'practice' && current()?.finished && !modal.open ? '（F）' : ''}">${e.favorite ? icons.filled : icons.star}</button>`;
 }
 function idle() {
   const r = S.rounds[category(S)],
     list = pool(S),
     pending = list.filter((e) => !r.done.includes(e.key)).length;
-  return `<section class="welcome"><h2>${list.length ? '开始练习' : '选择练习内容'}</h2><p>${list.length ? '当前范围有 ' + list.length + ' 条内容，' + pending + ' 条本轮未练。' : '可以调整左侧的分组和范围，或导入自己的词库。'}</p><div class="welcome-actions"><button class="primary large" data-action="start">${pending ? '开始 / 继续本轮练习' : '查看本轮完成情况'}</button></div><div class="key-guide"><span><kbd>Enter</kbd> 检查</span><span><kbd>空格</kbd> 下一题</span><span><kbd>Alt</kbd> 照打</span></div></section>`;
+  return `<section class="welcome"><h2>${list.length ? '开始练习' : '选择练习内容'}</h2><p>${list.length ? '当前范围有 ' + list.length + ' 条内容，' + pending + ' 条本轮未练。' : '可以调整左侧的分组和范围，或导入自己的词库。'}</p><div class="welcome-actions"><button class="primary large" data-action="start">${pending ? '开始 / 继续本轮练习' : '查看本轮完成情况'}</button></div><div class="key-guide"><span><kbd>Enter</kbd> 检查 / 下一题</span><span><kbd>Shift Enter</kbd> 跳过</span><span><kbd>R</kbd> 答案后照打</span></div></section>`;
 }
 function practice() {
   const r = S.rounds[category(S)],
@@ -294,7 +294,7 @@ function question(q, e) {
             '',
           )}</div>${q.options.length < 4 ? '<p class="muted">有效释义不足四组，本题使用 ' + q.options.length + ' 个选项。</p>' : ''}`
       : `<div class="meaning-prompt">${e.meanings.map((m) => `<p>${esc(m)}</p>`).join('')}</div>${englishBlock(e.english, e.supplement)}${S.settings.mode === 'hint' && !q.finished ? hintInput(q, e) : `<div class="input-wrap ${q.finished ? q.outcome : q.tries ? 'retry' : ''}"><input id="answer-input" aria-label="输入英文答案" autocomplete="off" autocapitalize="off" spellcheck="false" lang="en" placeholder="在这里输入英文…" value="${esc(q.outcome === 'skipped' ? e.english : q.input)}" ${q.finished ? 'readonly' : ''}><span id="answer-state">${q.finished ? (q.outcome === 'correct' ? '✓' : q.outcome === 'skipped' ? '↷' : '×') : ''}</span></div>`}`
-  }<div class="feedback ${q.finished ? q.outcome : q.tries ? 'retry' : ''}" role="status">${q.finished ? (q.outcome === 'skipped' ? '↷ 已跳过，本题不计对错；本轮不再加练这个词。' : q.outcome === 'correct' ? (q.tries ? '✓ 已改对，本题计正确一次' : '✓ 回答正确。') : '× 两次机会已用完，本题计错误一次，已加入常错本。') : q.tries ? '第一次未答对，还可以尝试一次。' : isChoice ? '按数字键选择，也可以点击选项。' : '准备好后，按 Enter 检查答案。'}</div><div class="question-actions">${previousButton()}${q.finished ? `<button class="primary" data-action="next">${reviewNextLabel()} <kbd>空格</kbd></button><button class="secondary" data-action="repeat">原词照打 <kbd>Alt</kbd></button><button class="secondary" data-action="extend">词形与词族 <kbd>Ctrl Alt E</kbd></button>` : `${isChoice ? '' : `<button class="primary" data-action="submit">检查答案 <kbd>Enter</kbd></button>`}<button class="secondary" data-action="skip">跳过 <kbd>Ctrl Enter</kbd></button>${q.tries ? '<button class="text-btn" data-action="repeat">临时照打 <kbd>Alt</kbd></button>' : ''}`}</div>${reviewedQuestion() && review.index < reviewLimit() - 1 ? '<button class="text-btn" data-action="resume-question">回到当前题</button>' : ''}${q.finished ? answerCard(e) : ''}</section>`;
+  }<div class="feedback ${q.finished ? q.outcome : q.tries ? 'retry' : ''}" role="status">${q.finished ? (q.outcome === 'skipped' ? '↷ 已跳过，本题不计对错；本轮不再加练这个词。' : q.outcome === 'correct' ? (q.tries ? '✓ 已改对，本题计正确一次' : '✓ 回答正确。') : '× 两次机会已用完，本题计错误一次，已加入常错本。') : q.tries ? '第一次未答对，还可以尝试一次。' : isChoice ? '按数字键选择，也可以点击选项。' : '准备好后，按 Enter 检查答案。'}</div><div class="question-actions">${previousButton()}${q.finished ? `<button class="primary" data-action="next">${reviewNextLabel()} <kbd>Enter</kbd></button><button class="secondary" data-action="repeat">原词照打 <kbd>R</kbd></button><button class="secondary" data-action="extend">派生词族 <kbd>E</kbd></button>` : `${isChoice ? '' : `<button class="primary" data-action="submit">检查答案 <kbd>Enter</kbd></button>`}<button class="secondary" data-action="skip">跳过 <kbd>Shift Enter</kbd></button>${q.tries ? '<button class="text-btn" data-action="repeat">临时照打 <kbd>Alt</kbd></button>' : ''}`}</div>${reviewedQuestion() && review.index < reviewLimit() - 1 ? '<button class="text-btn" data-action="resume-question">回到当前题</button>' : ''}${q.finished ? answerCard(e) : ''}</section>`;
 }
 function hintLetters(q, e) {
   const word = [...e.english],
@@ -562,7 +562,7 @@ function answerCard(e) {
           )
           .join('')
       : `<p class="muted">${resourceTasks.has(e.key) ? '正在补充例句…' : '暂无例句，可在编辑词条中补充。'}</p>`
-  }</div><details class="word-details"><summary>词形、词族与词源 <span>＋</span></summary>${forms.length ? `<h4>动词形态</h4><div class="word-chips">${forms.map((f) => `<span>${esc(f.word)} <small>${esc(f.label)}</small></span>`).join('')}</div>` : ''}${family.length ? `<h4>派生词族 · ${family.length} 项</h4><div class="word-chips">${family.map((f) => `<span>${esc(f.word)} <small>${esc(f.meaning || f.label || '相关派生词')}</small></span>`).join('')}</div>${family.some((f) => f.origin === 'wordnet') ? `<p class="muted"><a href="https://wordnet.princeton.edu/" target="_blank" rel="noopener noreferrer">词族资料 · WordNet</a> · <a href="/wordbooks/WordNet-LICENSE.txt" target="_blank" rel="noopener noreferrer">许可</a> · <a href="/wordbooks/families-NOTICE.txt" target="_blank" rel="noopener noreferrer">资料来源</a></p>` : ''}` : ''}${s?.pendingFamily?.length ? `<details class="pending-family"><summary>待补充词族（不进入默认练习） · ${s.pendingFamily.length}</summary><p class="muted">这些关联词的释义或优先级尚待确认。</p><div class="word-chips">${s.pendingFamily.map((f) => `<span>${esc(f.word)} <small>${esc(f.reason)}</small></span>`).join('')}</div></details>` : ''}<h4>词源记忆</h4><p class="etymology">${esc(s?.etymologyZh || s?.etymology || '尚无可核验的词源资料，可联网重试或手动补充。')}</p>${s?.etymologyZh ? `<p class="muted">${esc(s.etymologySource ? '词根线索来源：有道词典 · ' + s.etymologySource : '词源中文为机器翻译或手动补充，请结合原文理解。')}</p>` : ''}${s?.etymologyZh && s.etymology ? `<details><summary>查看 Wiktionary 词源参考</summary><p class="etymology">${esc(s.etymology)}</p></details>` : ''}<button class="secondary" data-action="extend" data-key="${esc(e.key)}">练习派生词族 →</button><button class="text-btn" data-action="extend" data-kind="all" data-key="${esc(e.key)}">含动词变化</button></details><div class="source-row"><span>${sourceLinks(s) || esc(e.source)}</span><button class="text-btn" data-action="refresh-resource" data-key="${esc(e.key)}">${resourceTasks.has(e.key) ? '资料获取中…' : '联网补充 / 重试'}</button></div></div>`;
+  }</div><details class="word-details"><summary>词形、词族与词源 <span>＋</span></summary>${forms.length ? `<h4>动词形态</h4><div class="word-chips">${forms.map((f) => `<span>${esc(f.word)} <small>${esc(f.label)}</small></span>`).join('')}</div>` : ''}${family.length ? `<h4>派生词族 · ${family.length} 项</h4><div class="word-chips">${family.map((f) => `<span>${esc(f.word)} <small>${esc(f.meaning || f.label || '相关派生词')}</small></span>`).join('')}</div>${family.some((f) => f.origin === 'wordnet') ? `<p class="muted"><a href="https://wordnet.princeton.edu/" target="_blank" rel="noopener noreferrer">词族资料 · WordNet</a> · <a href="/wordbooks/WordNet-LICENSE.txt" target="_blank" rel="noopener noreferrer">许可</a> · <a href="/wordbooks/families-NOTICE.txt" target="_blank" rel="noopener noreferrer">资料来源</a></p>` : ''}` : ''}${s?.pendingFamily?.length ? `<details class="pending-family"><summary>待补充词族（不进入默认练习） · ${s.pendingFamily.length}</summary><p class="muted">这些关联词的释义或优先级尚待确认。</p><div class="word-chips">${s.pendingFamily.map((f) => `<span>${esc(f.word)} <small>${esc(f.reason)}</small></span>`).join('')}</div></details>` : ''}<h4>词源记忆</h4><p class="etymology">${esc(s?.etymologyZh || s?.etymology || '尚无可核验的词源资料，可联网重试或手动补充。')}</p>${s?.etymologyZh ? `<p class="muted">${esc(s.etymologySource ? '词根线索来源：有道词典 · ' + s.etymologySource : '词源中文为机器翻译或手动补充，请结合原文理解。')}</p>` : ''}${s?.etymologyZh && s.etymology ? `<details><summary>查看 Wiktionary 词源参考</summary><p class="etymology">${esc(s.etymology)}</p></details>` : ''}<button class="secondary" data-action="extend" data-key="${esc(e.key)}">练习派生词族 <kbd>E</kbd></button><button class="text-btn" data-action="extend" data-kind="all" data-key="${esc(e.key)}">含动词变化 <kbd>Shift E</kbd></button></details><div class="source-row"><span>${sourceLinks(s) || esc(e.source)}</span><button class="text-btn" data-action="refresh-resource" data-key="${esc(e.key)}">${resourceTasks.has(e.key) ? '资料获取中…' : '联网补充 / 重试'}</button></div></div>`;
 }
 function library() {
   const cat = category(S);
@@ -1237,7 +1237,7 @@ function groupModal(batch = false) {
 }
 function settingsModal() {
   showModal(
-    `<h2>设置</h2><div class="settings-grid"><label class="setting-row"><span>显示英文释义<small>练习题、答案、原词照打及词形词族练习统一开关</small></span><input id="setting-english" type="checkbox" ${S.settings.englishDefinitions !== false ? 'checked' : ''}></label><label class="setting-row"><span>答案出现自动发音<small>默认美音；只在答案展示后播放</small></span><input id="setting-auto" type="checkbox" ${S.settings.autoAudio ? 'checked' : ''}></label><label class="setting-row"><span>发音口音<small>录音不足时使用对应口音的系统合成朗读</small></span><select id="setting-accent"><option value="us" ${S.settings.accent === 'us' ? 'selected' : ''}>美音 en-US</option><option value="uk" ${S.settings.accent === 'uk' ? 'selected' : ''}>英音 en-GB</option></select></label><label class="setting-row"><span>句子严格检查大小写<small>单词和短语始终忽略大小写及首尾空格</small></span><input id="setting-case" type="checkbox" ${S.settings.strictCase ? 'checked' : ''}></label><label class="setting-row"><span>句子严格检查标点</span><input id="setting-punctuation" type="checkbox" ${S.settings.strictPunctuation ? 'checked' : ''}></label></div><p class="muted">速度按 5 个字符折算为 1 个标准词。有效打字时间按连续输入计算，超过 5 秒未操作暂停计时；阅读答案、听发音、窗口失焦及拓展练习不计入正式速度。</p><div class="modal-actions"><button class="primary" id="save-settings">保存设置</button><button class="secondary" data-action="backup">导出完整备份</button><button class="text-btn" data-action="restore-picker">恢复备份</button></div><p class="muted">默认拓展快捷键 Ctrl＋Alt＋E；也会尝试识别 Fn＋Alt。Fn 是否可识别取决于键盘。</p>`,
+    `<h2>设置</h2><div class="settings-grid"><label class="setting-row"><span>显示英文释义<small>练习题、答案、原词照打及词形词族练习统一开关</small></span><input id="setting-english" type="checkbox" ${S.settings.englishDefinitions !== false ? 'checked' : ''}></label><label class="setting-row"><span>答案出现自动发音<small>默认美音；只在答案展示后播放</small></span><input id="setting-auto" type="checkbox" ${S.settings.autoAudio ? 'checked' : ''}></label><label class="setting-row"><span>发音口音<small>录音不足时使用对应口音的系统合成朗读</small></span><select id="setting-accent"><option value="us" ${S.settings.accent === 'us' ? 'selected' : ''}>美音 en-US</option><option value="uk" ${S.settings.accent === 'uk' ? 'selected' : ''}>英音 en-GB</option></select></label><label class="setting-row"><span>句子严格检查大小写<small>单词和短语始终忽略大小写及首尾空格</small></span><input id="setting-case" type="checkbox" ${S.settings.strictCase ? 'checked' : ''}></label><label class="setting-row"><span>句子严格检查标点</span><input id="setting-punctuation" type="checkbox" ${S.settings.strictPunctuation ? 'checked' : ''}></label></div><p class="muted">速度按 5 个字符折算为 1 个标准词。有效打字时间按连续输入计算，超过 5 秒未操作暂停计时；阅读答案、听发音、窗口失焦及拓展练习不计入正式速度。</p><div class="modal-actions"><button class="primary" id="save-settings">保存设置</button><button class="secondary" data-action="backup">导出完整备份</button><button class="text-btn" data-action="restore-picker">恢复备份</button></div><p class="muted">答案展示后：R 照打，E 派生词族，Shift＋E 含动词变化，F 收藏，P 发音。词族练习中 Ctrl＋Enter 加入主词库。</p>`,
   );
   $('#save-settings').onclick = () => {
     S.settings.englishDefinitions = $('#setting-english').checked;
@@ -1827,7 +1827,7 @@ function renderAux() {
     return;
   }
   showModal(
-    `<h2 class="visually-hidden">词义与拼写练习</h2><div class="aux-header"><span class="aux-mode">${aux.type === 'repeat' ? '原词照打' : '词形与词族'}</span><span class="aux-count">${aux.type === 'repeat' ? '已完成 ' + aux.done + ' 次' : aux.index + 1 + ' / ' + aux.items.length}</span></div>${aux.type === 'extend' ? `<div class="aux-tools"><span>原词 ${esc(aux.root)}</span><label><input id="aux-copy" type="checkbox" ${aux.copy ? 'checked' : ''}> 显示灰色答案</label></div>` : ''}<div class="aux-prompt">${aux.type === 'extend' && item.type === 'form' ? `<span class="aux-target-label">${esc(item.label)}</span>` : ''}<p class="aux-meaning">${esc(aux.type === 'extend' && item.type === 'form' ? (item.meaning || '').replace((item.label || '') + ' · ', '') : item.meaning || '')}</p>${item.type === 'family' && item.via?.length > 2 ? `<p class="muted">派生路径：${item.via.map(esc).join(' → ')}</p>` : ''}${englishBlock(item.word, item, item.type === 'form' ? 'verb' : item.pos || '')}<div id="aux-hint" class="muted">${item.unavailable ? '释义待补充，可跳过此项。' : item.type === 'family' && !item.meaning ? '正在准备中文释义…' : ''}</div></div><div class="typing-line" id="typing-line"><div class="letter-display" id="letter-display" aria-hidden="true">${letterHTML(item.word, aux.text, aux.copy)}</div><input id="aux-input" class="aux-input" aria-label="拓展或反复练习输入" autocomplete="off" spellcheck="false" autocapitalize="off" value="${esc(aux.text)}"></div><div id="aux-pronunciation" class="aux-pronunciation">${auxPronunciationHTML(item)}</div><p id="aux-feedback" class="muted ${aux.feedbackError ? 'is-error' : ''}" role="status" aria-live="polite">${aux.feedbackError ? '还没有完整拼对，可以继续修改。' : compare(aux.text, item.word, 'word', S.settings) ? '✓ 完整拼写正确，按 Enter 继续。' : '直接输入英文，按 Enter 继续。'}</p><div class="modal-actions"><button class="primary" data-action="aux-next">检查 / 继续 <kbd>Enter</kbd></button>${aux.type === 'extend' ? `<button class="secondary" data-action="aux-add">加入主词库</button><button class="text-btn" data-action="aux-skip">跳过此项</button>` : ''}<button class="text-btn" data-action="close-modal">${aux.type === 'repeat' ? '结束照打 Alt' : '返回原答案 Esc'}</button></div>`,
+    `<h2 class="visually-hidden">词义与拼写练习</h2><div class="aux-header"><span class="aux-mode">${aux.type === 'repeat' ? '原词照打' : '词形与词族'}</span><span class="aux-count">${aux.type === 'repeat' ? '已完成 ' + aux.done + ' 次' : aux.index + 1 + ' / ' + aux.items.length}</span></div>${aux.type === 'extend' ? `<div class="aux-tools"><span>原词 ${esc(aux.root)}</span><label><input id="aux-copy" type="checkbox" ${aux.copy ? 'checked' : ''}> 显示灰色答案</label></div>` : ''}<div class="aux-prompt">${aux.type === 'extend' && item.type === 'form' ? `<span class="aux-target-label">${esc(item.label)}</span>` : ''}<p class="aux-meaning">${esc(aux.type === 'extend' && item.type === 'form' ? (item.meaning || '').replace((item.label || '') + ' · ', '') : item.meaning || '')}</p>${item.type === 'family' && item.via?.length > 2 ? `<p class="muted">派生路径：${item.via.map(esc).join(' → ')}</p>` : ''}${englishBlock(item.word, item, item.type === 'form' ? 'verb' : item.pos || '')}<div id="aux-hint" class="muted">${item.unavailable ? '释义待补充，可跳过此项。' : item.type === 'family' && !item.meaning ? '正在准备中文释义…' : ''}</div></div><div class="typing-line" id="typing-line"><div class="letter-display" id="letter-display" aria-hidden="true">${letterHTML(item.word, aux.text, aux.copy)}</div><input id="aux-input" class="aux-input" aria-label="拓展或反复练习输入" autocomplete="off" spellcheck="false" autocapitalize="off" value="${esc(aux.text)}"></div><div id="aux-pronunciation" class="aux-pronunciation">${auxPronunciationHTML(item)}</div><p id="aux-feedback" class="muted ${aux.feedbackError ? 'is-error' : ''}" role="status" aria-live="polite">${aux.feedbackError ? '还没有完整拼对，可以继续修改。' : compare(aux.text, item.word, 'word', S.settings) ? '✓ 完整拼写正确，按 Enter 继续。' : '直接输入英文，按 Enter 继续。'}</p><div class="modal-actions"><button class="primary" data-action="aux-next">检查 / 继续 <kbd>Enter</kbd></button>${aux.type === 'extend' ? `<button class="secondary" data-action="aux-add">加入主词库 <kbd>Ctrl Enter</kbd></button><button class="text-btn" data-action="aux-skip">跳过此项 <kbd>Shift Enter</kbd></button>` : ''}<button class="text-btn" data-action="close-modal">${aux.type === 'repeat' ? '结束照打 Esc / Alt' : '返回原答案 Esc'}</button></div>`,
   );
   $('#aux-input').focus();
   $('#aux-input').setSelectionRange(aux.text.length, aux.text.length);
@@ -2222,7 +2222,7 @@ const actions = {
   },
   keys: () =>
     showModal(
-      '<h2>键盘操作指南</h2><div class="keyboard-list"><p><kbd>Enter</kbd> 提交 / 重试答案</p><p><kbd>Ctrl</kbd> ＋ <kbd>Enter</kbd> 跳过，不计对错并显示答案</p><p><kbd>空格</kbd> 答案展示后进入下一题；输入中空格正常使用</p><p><kbd>1</kbd> ～ <kbd>4</kbd> 选择中文释义</p><p><kbd>Alt</kbd> 提交过当前题后，进入或退出原词照打</p><p><kbd>Ctrl</kbd> ＋ <kbd>Alt</kbd> ＋ <kbd>E</kbd> 答案页进入词形与词族拓展</p><p><kbd>Fn</kbd> ＋ <kbd>Alt</kbd> 若键盘能报告 Fn，也可进入拓展</p><p><kbd>Esc</kbd> 退出拓展，回到原题</p></div><p class="muted">Fn 在部分键盘上无法传给网页，拓展按钮和 Ctrl＋Alt＋E 始终作为替代入口。</p>',
+      '<h2>键盘操作指南</h2><div class="keyboard-list"><p><kbd>Enter</kbd> 检查答案；答案展示后下一题；照打和词族中检查 / 继续</p><p><kbd>空格</kbd> 答案展示后也可进入下一题</p><p><kbd>Shift</kbd> ＋ <kbd>Enter</kbd> 跳过正式题或当前词族词</p><p><kbd>Page Up</kbd> 上一题</p><p><kbd>1</kbd> ～ <kbd>4</kbd> 选择中文释义</p><p>以下单键只在正式答案展示后生效，输入英文时正常打字：</p><p><kbd>R</kbd> 原词照打（原 <kbd>Alt</kbd> 入口保留）</p><p><kbd>E</kbd> 派生词族；<kbd>Shift</kbd> ＋ <kbd>E</kbd> 含动词变化</p><p><kbd>F</kbd> 收藏 / 取消收藏；<kbd>P</kbd> 播放发音</p><p><kbd>Ctrl</kbd> ＋ <kbd>Enter</kbd> 词族练习中加入主词库</p><p><kbd>Esc</kbd> 关闭弹窗，返回原题；照打中也可按 <kbd>Alt</kbd> 退出</p></div>',
     ),
 };
 document.addEventListener('click', (ev) => {
@@ -2241,17 +2241,6 @@ document.addEventListener('keydown', (ev) => {
   if (!S || ev.isComposing) return;
   if (configOpen || ev.target.closest?.('.practice-sidebar,.header')) return;
   if (altPending && ev.key !== 'Alt') altPending = false;
-  if (ev.key === 'Fn') {
-    fnSeen = true;
-    return;
-  }
-  const fn = fnSeen || ev.getModifierState?.('Fn');
-  if ((ev.ctrlKey && ev.altKey && ev.code === 'KeyE') || (ev.key === 'Alt' && fn)) {
-    ev.preventDefault();
-    if (S.aux) closeModal();
-    else extend();
-    return;
-  }
   if (
     ev.key === 'Alt' &&
     !ev.ctrlKey &&
@@ -2261,54 +2250,52 @@ document.addEventListener('keydown', (ev) => {
     (!modal.open || S.aux)
   ) {
     ev.preventDefault();
-    if (!ev.repeat) altPending = true;
+    if (!ev.repeat && (S.aux?.type === 'repeat' || !modal.open)) altPending = true;
     return;
   }
-  if (modal.open) {
-    if (ev.key === 'Enter' && S.aux) {
-      ev.preventDefault();
-      auxNext();
-    }
-    return;
-  }
+  if (modal.open && !S.aux) return;
   if (
-    view !== 'practice' ||
-    ['SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName) ||
-    document.activeElement?.id === 'hint-level'
+    !modal.open &&
+    (view !== 'practice' ||
+      ev.target.closest?.('select,textarea,[contenteditable="true"]') ||
+      (ev.target.tagName === 'INPUT' && ev.target.id !== 'answer-input'))
   )
     return;
   const q = current();
-  if (!q) return;
-  if (ev.key === ' ' && q.finished) {
-    ev.preventDefault();
-    next();
+  if (!q && !S.aux) return;
+  const command = practiceShortcut(ev, {
+    auxiliary: S.aux?.type || '',
+    finished: !!q?.finished,
+    choice: category(S) === 'choice',
+  });
+  if (!command) return;
+  ev.preventDefault();
+  if (S.aux) {
+    if (command === 'add') auxAdd();
+    else if (command === 'skip') auxNext(true);
+    else if (command === 'aux-next') auxNext();
     return;
   }
-  if (ev.key === 'Enter' && ev.ctrlKey && !q.finished) {
-    ev.preventDefault();
-    skipCurrent();
-    return;
-  }
-  if (ev.key === 'Enter' && !q.finished) {
-    ev.preventDefault();
-    if (category(S) === 'typing') checkAnswer();
-    return;
-  }
-  if (category(S) === 'choice' && !q.finished && /^[1-4]$/.test(ev.key)) {
-    const option = choices(S, q)[Number(ev.key) - 1];
-    if (option) {
-      ev.preventDefault();
-      checkAnswer(option.key);
-    }
+  if (command === 'next') next();
+  else if (command === 'previous') previous();
+  else if (command === 'skip') skipCurrent();
+  else if (command === 'submit') checkAnswer();
+  else if (command === 'repeat') repeat();
+  else if (command === 'extend-family') extend(undefined, 'family');
+  else if (command === 'extend-all') extend(undefined, 'all');
+  else if (command === 'favorite') toggleFavorite(entry().key);
+  else if (command === 'audio') playWord(entry());
+  else if (command.startsWith('choose-')) {
+    const option = choices(S, q)[Number(command.slice(-1)) - 1];
+    if (option) checkAnswer(option.key);
   }
 });
 document.addEventListener('keyup', (ev) => {
-  if (ev.key === 'Fn') fnSeen = false;
   if (ev.key === 'Alt' && altPending) {
     altPending = false;
     ev.preventDefault();
-    if (S.aux) closeModal();
-    else repeat();
+    if (S.aux?.type === 'repeat') closeModal();
+    else if (!modal.open) repeat();
   }
 });
 modal.addEventListener('cancel', (ev) => {
@@ -2326,7 +2313,6 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('blur', () => {
   active = false;
   lastTick = 0;
-  fnSeen = false;
   altPending = false;
 });
 window.addEventListener('pagehide', () => {

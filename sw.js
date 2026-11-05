@@ -1,8 +1,9 @@
-const CACHE = 'cijian-browser-v14-complete-families';
+const CACHE = 'cijian-browser-v15-shortcuts';
 const SHELL = [
   '/',
   '/index.html',
   '/app.mjs',
+  '/shortcuts.mjs',
   '/navigation.mjs',
   '/aux-pronunciation.mjs',
   '/english-definitions.mjs',
