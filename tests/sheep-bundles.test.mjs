@@ -39,10 +39,10 @@ test('both pastures show exact weighted counts without paging or modifying progr
   const before = JSON.stringify(s),
     html = pasturePage(s, '');
   assert.match(html, /待记草场/);
-  assert.doesNotMatch(html, /出发草场|pasture-page|下一页羊群/);
+  assert.doesNotMatch(html, /出发草场|pasture-page|下一页羊群|sheep-value|field-footer/);
   const sides = [...html.matchAll(/<div class="sheep-roam">(.*?)<\/div>/g)].map((m) => m[1]);
   const values = sides.map((side) =>
-    [...side.matchAll(/class="sheep-value">(\d+) 词/g)].reduce((sum, m) => sum + Number(m[1]), 0),
+    [...side.matchAll(/data-value="(\d+)"/g)].reduce((sum, m) => sum + Number(m[1]), 0),
   );
   assert.deepEqual(values, [368, 632]);
   assert.equal(JSON.stringify(s), before);

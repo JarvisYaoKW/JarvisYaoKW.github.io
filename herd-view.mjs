@@ -58,25 +58,17 @@ function bundleToken(s, bundle, side, list, numbers) {
     return token(s, e, numbers)
       .replace('class="sheep-token ', 'class="sheep-token size-tiny ')
       .replace('aria-label="羊 ', 'aria-label="小小羊，代表 1 词，羊 ')
-      .replace(
-        '<span class="sheep-name">',
-        '<span class="sheep-value">1 词</span><span class="sheep-name visually-hidden">',
-      );
+      .replace('data-action="pasture-inspect"', 'data-action="pasture-inspect" data-value="1"')
+      .replace('<span class="sheep-name">', '<span class="sheep-name visually-hidden">');
   }
   const seed = sheepSeed(`${side}:${bundle.value}:${bundle.offset}`),
     skin = selectedSkin(s, seed),
     caught = side === 'inside';
-  return `<button class="sheep-token sheep-bundle size-${bundle.size}${caught ? ' caught' : ''}" data-action="pasture-bundle" data-value="${bundle.value}" data-label="${bundle.label}" data-seed="${seed}" data-variant="${skin.variant}" data-skin-id="${skin.id}" aria-label="${bundle.label}，代表 ${bundle.value} 词，${caught ? '本轮已答对' : '待记'}" title="${bundle.label} · ${bundle.value} 词 · 皮肤 ${skin.id} ${skin.name}"><span class="sheep-direction">${sheepSVG(skin.variant)}</span><span class="sheep-value">${bundle.value} 词</span></button>`;
+  return `<button class="sheep-token sheep-bundle size-${bundle.size}${caught ? ' caught' : ''}" data-action="pasture-bundle" data-value="${bundle.value}" data-label="${bundle.label}" data-seed="${seed}" data-variant="${skin.variant}" data-skin-id="${skin.id}" aria-label="${bundle.label}，代表 ${bundle.value} 词，${caught ? '本轮已答对' : '待记'}" title="${bundle.label} · ${bundle.value} 词 · 皮肤 ${skin.id} ${skin.name}"><span class="sheep-direction">${sheepSVG(skin.variant)}</span></button>`;
 }
 function field(s, list, side, numbers) {
-  const bundles = sheepBundles(list.length),
-    breakdown = SHEEP_SIZES.map((unit) => {
-      const count = bundles.filter((b) => b.value === unit.value).length;
-      return count ? `${unit.label} × ${count}` : '';
-    })
-      .filter(Boolean)
-      .join(' · ');
-  return `<section class="pasture-field ${side}"><div class="field-heading"><div><span class="field-marker"></span><h2>${side === 'outside' ? '待记草场' : '记忆草场'}</h2><span class="field-count">${list.length.toLocaleString('zh-CN')}<small> 词</small></span></div><span>${side === 'outside' ? '待带回' : '本轮已答对'}</span></div><div class="field-ground"><div class="field-grass"></div><div class="sheep-roam">${bundles.map((b) => bundleToken(s, b, side, list, numbers)).join('')}</div>${!list.length ? `<div class="field-empty">${side === 'outside' ? '这一侧的词都带回来了。' : '还没有带回的词。'}<small>${side === 'outside' ? '接着完成正常练习里的加练。' : '正常练习答对后，会出现在这里。'}</small></div>` : ''}<div class="field-fence" aria-hidden="true"></div></div><div class="field-footer"><span>${breakdown || '0 词'}</span><span>${bundles.length} 只羊</span></div></section>`;
+  const bundles = sheepBundles(list.length);
+  return `<section class="pasture-field ${side}"><div class="field-heading"><div><span class="field-marker"></span><h2>${side === 'outside' ? '待记草场' : '记忆草场'}</h2><span class="field-count">${list.length.toLocaleString('zh-CN')}<small> 词</small></span></div><span>${side === 'outside' ? '待带回' : '本轮已答对'}</span></div><div class="field-ground"><div class="field-grass"></div><div class="sheep-roam">${bundles.map((b) => bundleToken(s, b, side, list, numbers)).join('')}</div>${!list.length ? `<div class="field-empty">${side === 'outside' ? '这一侧的词都带回来了。' : '还没有带回的词。'}<small>${side === 'outside' ? '接着完成正常练习里的加练。' : '正常练习答对后，会出现在这里。'}</small></div>` : ''}<div class="field-fence" aria-hidden="true"></div></div></section>`;
 }
 function sheepLegend() {
   return `<div class="sheep-legend" aria-label="羊体型与词数换算">${SHEEP_SIZES.map((unit) => `<div class="legend-unit size-${unit.size}"><span class="legend-sheep">${sheepSVG(0)}</span><span><strong>${unit.label}</strong><small>1 只 = ${unit.value} 词</small></span></div>`).join('')}</div>`;

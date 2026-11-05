@@ -1,4 +1,4 @@
-const CACHE = 'cijian-browser-v16-sheep-bundles';
+const CACHE = 'cijian-browser-v17-sheep-only';
 const SHELL = [
   '/',
   '/index.html',
