@@ -1,4 +1,4 @@
-const CACHE = 'cijian-browser-v13-complete-families';
+const CACHE = 'cijian-browser-v14-complete-families';
 const SHELL = [
   '/',
   '/index.html',

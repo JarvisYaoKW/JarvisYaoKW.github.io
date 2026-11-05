@@ -17,7 +17,7 @@ export async function loadFamilyData(word = '') {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 20000);
     try {
-      const response = await fetch('/wordbooks/families/' + letter + '.json?v=20261104-1', {
+      const response = await fetch('/wordbooks/families/' + letter + '.json?v=20261104-2', {
         signal: controller.signal,
       });
       if (!response.ok) throw Error('预置词族资料暂时无法加载');

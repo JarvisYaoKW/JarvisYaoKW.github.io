@@ -1,4 +1,4 @@
-Complete word-family supplement (20261104-1)
+Complete word-family supplement (20261104-2)
 
 Relations and English definitions: Princeton WordNet 3.0 (WordNet-LICENSE.txt).
 Chinese definitions and primary IPA: ECDICT, pinned inputs in families-lock.json.

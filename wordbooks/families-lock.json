@@ -1,19 +1,19 @@
 {
-  "version": "20261104-1",
+  "version": "20261104-2",
   "rootCount": 8066,
-  "coveredRoots": 5247,
-  "indexedRoots": 24232,
-  "members": 26223,
+  "coveredRoots": 5248,
+  "indexedRoots": 24234,
+  "members": 26225,
   "relations": {
-    "derivation": 24485,
-    "multi-step": 31758,
+    "derivation": 24493,
+    "multi-step": 31794,
     "prefix": 2413,
     "adverb-adjective": 4866,
     "pertainym": 1313,
     "reviewed-family": 5
   },
-  "relationCount": 64840,
-  "adjectiveRootsWithAdverbs": 2742,
+  "relationCount": 64884,
+  "adjectiveRootsWithAdverbs": 2743,
   "books": {
     "ielts-core": {
       "words": 1000,
@@ -25,7 +25,7 @@
     },
     "ielts": {
       "words": 5040,
-      "coveredRoots": 3279
+      "coveredRoots": 3280
     },
     "cet4": {
       "words": 3849,
@@ -50,7 +50,7 @@
       "sha256": "2af6f154a5c363275f052d1f85acedef38ed185ca9745aa4314be77f6b70de67"
     }
   ],
-  "outputSHA256": "4862a7c5e008b7e8451e95b7b827a093d527a40408c87a2e00194f2ee5ccfb00",
+  "outputSHA256": "1832028bcb67eefe5924e326301dfa01ca7fc00ca38b431ca64271f1762d9733",
   "filters": [
     "explicit lexical derivation or adverb/adjective pointer",
     "current source POS",
@@ -60,8 +60,8 @@
     "explicit prefix-antonym pairs and morphologically matching pertainyms; no synonym edges or invented words"
   ],
   "ipaFilledFromUS": 580,
-  "presetRelationCount": 17394,
-  "presetAdjectiveRootsWithAdverbs": 1042,
+  "presetRelationCount": 17418,
+  "presetAdjectiveRootsWithAdverbs": 1043,
   "maxMembersPerRoot": 40,
   "missingIPA": [
     "aberrancy",

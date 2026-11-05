@@ -111,7 +111,7 @@ def main():
                 ipa_filled += 1
         (args.out / "IPA-DICT-LICENSE.txt").write_bytes(args.ipa_license.read_bytes())
 
-    output = {"schema": 1, "version": "20261104-1", "sources": {"relations": "Princeton WordNet 3.0", "meanings": "ECDICT · MIT"}, "entries": entries, "members": dict(sorted(members.items())), "links": links}
+    output = {"schema": 1, "version": "20261104-2", "sources": {"relations": "Princeton WordNet 3.0", "meanings": "ECDICT · MIT"}, "entries": entries, "members": dict(sorted(members.items())), "links": links}
     encoded = (json.dumps(output, ensure_ascii=False, separators=(",", ":")) + "\n").encode()
     (args.out / "families.json").write_bytes(encoded)
     # Browser loads only the current initial's shard, not the entire audit dataset.

@@ -4,7 +4,7 @@ from os.path import commonprefix
 import re
 
 WORD = re.compile(r"[a-z]+(?:-[a-z]+)*\Z")
-IRREGULAR = {frozenset(pair) for pair in [('long','length'),('wide','width'),('high','height'),('deep','depth'),('broad','breadth'),('young','youth'),('choose','choice'),('see','sight')]}
+IRREGULAR = {frozenset(pair) for pair in [('clear','clarity'),('clear','clarify'),('able','ability'),('die','death'),('live','life'),('poor','poverty'),('sell','sale'),('do','deed'),('feed','food'),('fly','flight'),('sit','seat'),('sing','song'),('long','length'),('wide','width'),('high','height'),('deep','depth'),('broad','breadth'),('young','youth'),('choose','choice'),('see','sight')]}
 PREFIXES = ('un', 'non', 'dis', 'in', 'im', 'il', 'ir', 'de', 'mis')
 
 
