@@ -1,5 +1,28 @@
 import { category, pool } from './engine.mjs';
 
+export const SHEEP_SIZES = Object.freeze([
+  { value: 500, label: '巨大羊', size: 'giant' },
+  { value: 100, label: '大羊', size: 'large' },
+  { value: 50, label: '中羊', size: 'medium' },
+  { value: 10, label: '小羊', size: 'small' },
+  { value: 1, label: '小小羊', size: 'tiny' },
+]);
+
+// A read-only count representation: regrouping sheep never changes real word progress.
+export function sheepBundles(count) {
+  let remaining = Number.isSafeInteger(count) && count > 0 ? count : 0;
+  const bundles = [];
+  let offset = 0;
+  for (const unit of SHEEP_SIZES) {
+    while (remaining >= unit.value) {
+      bundles.push({ ...unit, offset });
+      remaining -= unit.value;
+      offset += unit.value;
+    }
+  }
+  return bundles;
+}
+
 // Read-only projection of the normal practice round. No question queue or score lives here.
 export function sheepStatus(s, key) {
   const r = s.rounds[category(s)],

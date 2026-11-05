@@ -1,4 +1,4 @@
-const CACHE = 'cijian-browser-v15-shortcuts';
+const CACHE = 'cijian-browser-v16-sheep-bundles';
 const SHELL = [
   '/',
   '/index.html',

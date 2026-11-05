@@ -1,6 +1,6 @@
 import { SHEEP_SKINS, walletSummary, selectedSkin } from './pasture-economy.mjs';
 import { category } from './engine.mjs';
-import { herdSummary, sheepStatus } from './herd.mjs';
+import { herdSummary, sheepStatus, sheepBundles, SHEEP_SIZES } from './herd.mjs';
 const esc = (s) =>
   String(s ?? '').replace(
     /[&<>"']/g,
@@ -33,7 +33,7 @@ export function eventText(s) {
   return (
     {
       catch: `抓到 #${number} 啦，它已经到了记忆草场。${ev.coins ? ' 金币 +1。' : ''}`,
-      miss: `这次没抓到 #${number}，它留在出发草场。`,
+      miss: `这次没抓到 #${number}，它留在待记草场。`,
       escape: `#${number} 又溜回来了，当前正在正常加练。`,
       skip: `先放过 #${number}，这题跳过，不计对错。`,
     }[ev.type] || ''
@@ -52,14 +52,36 @@ function token(s, e, numbers) {
     selected = q?.key === e.key && !q.finished;
   return `<button class="sheep-token ${status}${selected ? ' selected' : ''}" data-action="pasture-inspect" data-key="${esc(e.key)}" data-seed="${seed}" data-variant="${skin.variant}" data-skin-id="${skin.id}" aria-label="羊 ${numbers.get(e.key)}，${names[status]}${known ? '，' + esc(e.english) : ''}" title="${esc('#' + numbers.get(e.key) + ' · ' + names[status] + ' · 皮肤 ' + skin.id + ' ' + skin.name + (known ? ' · ' + e.english : ''))}"><span class="sheep-direction">${sheepSVG(skin.variant)}</span><span class="sheep-name">${known ? esc(e.english) : '#' + numbers.get(e.key)}</span>${e.favorite ? '<i class="sheep-favorite" aria-label="已收藏">●</i>' : ''}${status === 'escaped' ? '<i class="sheep-escape">↶</i>' : ''}</button>`;
 }
-function field(s, list, side, numbers, pages) {
-  const size = typeof innerWidth !== 'undefined' && innerWidth < 700 ? 12 : 24,
-    totalPages = Math.max(1, Math.ceil(list.length / size));
-  const page = Math.min(Math.max(0, pages[side] || 0), totalPages - 1),
-    shown = list.slice(page * size, (page + 1) * size);
-  return `<section class="pasture-field ${side}"><div class="field-heading"><div><span class="field-marker"></span><h2>${side === 'outside' ? '出发草场' : '记忆草场'}</h2><span class="field-count">${list.length}<small> 只</small></span></div><span>${side === 'outside' ? '还没带回的小羊' : '本轮已答对的小羊'}</span></div><div class="field-ground"><div class="field-grass"></div><div class="sheep-roam">${shown.map((e) => token(s, e, numbers)).join('')}</div>${!list.length ? `<div class="field-empty">${side === 'outside' ? '小羊都被带过去啦。' : '这片草地在等第一只小羊。'}<small>${side === 'outside' ? '接着完成正常练习里的加练。' : '回到练习页，答对就能带回来。'}</small></div>` : ''}<div class="field-fence" aria-hidden="true"></div></div><div class="field-footer"><span>${list.length ? `${page * size + 1}–${Math.min((page + 1) * size, list.length)} / ${list.length} 只` : '0 只'} · 自由活动中</span>${totalPages > 1 ? `<div><button data-action="pasture-page" data-side="${side}" data-page="${page - 1}" ${page === 0 ? 'disabled' : ''} aria-label="上一页羊群">←</button><span>${page + 1} / ${totalPages}</span><button data-action="pasture-page" data-side="${side}" data-page="${page + 1}" ${page === totalPages - 1 ? 'disabled' : ''} aria-label="下一页羊群">→</button></div>` : '<span class="field-click-note">点击小羊查看状态</span>'}</div></section>`;
+function bundleToken(s, bundle, side, list, numbers) {
+  const e = list[bundle.offset];
+  if (bundle.value === 1) {
+    return token(s, e, numbers)
+      .replace('class="sheep-token ', 'class="sheep-token size-tiny ')
+      .replace('aria-label="羊 ', 'aria-label="小小羊，代表 1 词，羊 ')
+      .replace(
+        '<span class="sheep-name">',
+        '<span class="sheep-value">1 词</span><span class="sheep-name visually-hidden">',
+      );
+  }
+  const seed = sheepSeed(`${side}:${bundle.value}:${bundle.offset}`),
+    skin = selectedSkin(s, seed),
+    caught = side === 'inside';
+  return `<button class="sheep-token sheep-bundle size-${bundle.size}${caught ? ' caught' : ''}" data-action="pasture-bundle" data-value="${bundle.value}" data-label="${bundle.label}" data-seed="${seed}" data-variant="${skin.variant}" data-skin-id="${skin.id}" aria-label="${bundle.label}，代表 ${bundle.value} 词，${caught ? '本轮已答对' : '待记'}" title="${bundle.label} · ${bundle.value} 词 · 皮肤 ${skin.id} ${skin.name}"><span class="sheep-direction">${sheepSVG(skin.variant)}</span><span class="sheep-value">${bundle.value} 词</span></button>`;
 }
-export function pasturePage(s, toolbar, pages = {}) {
+function field(s, list, side, numbers) {
+  const bundles = sheepBundles(list.length),
+    breakdown = SHEEP_SIZES.map((unit) => {
+      const count = bundles.filter((b) => b.value === unit.value).length;
+      return count ? `${unit.label} × ${count}` : '';
+    })
+      .filter(Boolean)
+      .join(' · ');
+  return `<section class="pasture-field ${side}"><div class="field-heading"><div><span class="field-marker"></span><h2>${side === 'outside' ? '待记草场' : '记忆草场'}</h2><span class="field-count">${list.length.toLocaleString('zh-CN')}<small> 词</small></span></div><span>${side === 'outside' ? '待带回' : '本轮已答对'}</span></div><div class="field-ground"><div class="field-grass"></div><div class="sheep-roam">${bundles.map((b) => bundleToken(s, b, side, list, numbers)).join('')}</div>${!list.length ? `<div class="field-empty">${side === 'outside' ? '这一侧的词都带回来了。' : '还没有带回的词。'}<small>${side === 'outside' ? '接着完成正常练习里的加练。' : '正常练习答对后，会出现在这里。'}</small></div>` : ''}<div class="field-fence" aria-hidden="true"></div></div><div class="field-footer"><span>${breakdown || '0 词'}</span><span>${bundles.length} 只羊</span></div></section>`;
+}
+function sheepLegend() {
+  return `<div class="sheep-legend" aria-label="羊体型与词数换算">${SHEEP_SIZES.map((unit) => `<div class="legend-unit size-${unit.size}"><span class="legend-sheep">${sheepSVG(0)}</span><span><strong>${unit.label}</strong><small>1 只 = ${unit.value} 词</small></span></div>`).join('')}</div>`;
+}
+export function pasturePage(s, toolbar) {
   const sum = herdSummary(s),
     r = s.rounds[category(s)],
     q = r.current,
@@ -67,7 +89,7 @@ export function pasturePage(s, toolbar, pages = {}) {
   const percent = sum.entries.length
     ? Math.round((sum.caught.length / sum.entries.length) * 100)
     : 0;
-  return `<main class="main pasture-main">${toolbar}${walletBarHTML(s)}<div class="herd-progress"><div><strong>正常练习 · 第 ${r.number} 轮</strong><span>${category(s) === 'typing' ? '拼写进度' : '认义选择进度'}</span><span>已带回 <b>${sum.caught.length}</b> / ${sum.entries.length} 只</span><span>基础已练 ${sum.done} 条 · 加练 ${sum.extra} 次</span></div><span>逃回 ${sum.escaped.length} 只</span></div><div class="herd-progress-bar" aria-label="已带回 ${percent}%"><i style="width:${percent}%"></i></div><div class="pasture-board">${field(s, sum.outside, 'outside', numbers, pages)}<div class="pasture-bridge" aria-hidden="true"><span>→</span><small>答对就带回</small></div>${field(s, sum.caught, 'inside', numbers, pages)}</div><div class="herd-story ${sum.event?.type || ''}" role="status">${esc(eventText(s))}</div><div class="pasture-return"><div><strong>${q ? '当前题和输入都已保留' : '正常练习进度'}</strong><p>答对带过去 · 答错留在原地 · 已抓到的词进入加练时逃回来</p></div><button class="primary" data-action="pasture-practice">${q?.finished ? '返回当前答案' : q ? '继续正常练习' : '开始正常练习'} →</button></div>${sum.skipped.length ? `<p class="pasture-note">${sum.skipped.length} 只本轮跳过的小羊留在出发草场，不计为答错。</p>` : ''}${sum.unknown.length ? '<p class="pasture-note">部分旧记录没有本轮答题结果，暂时留在出发草场；后续作答会自动更新。</p>' : ''}<div class="pasture-footnote"><span>与练习页共用模式、分组、范围和轮次 · 新词自动加入 · 照打与拓展不改变羊的位置</span></div></main>`;
+  return `<main class="main pasture-main">${toolbar}${walletBarHTML(s)}<div class="herd-progress"><div><strong>正常练习 · 第 ${r.number} 轮</strong><span>${category(s) === 'typing' ? '拼写进度' : '认义选择进度'}</span><span>已带回 <b>${sum.caught.length}</b> / ${sum.entries.length} 词</span><span>基础已练 ${sum.done} 条 · 加练 ${sum.extra} 次</span></div><span>逃回 ${sum.escaped.length} 词</span></div><div class="herd-progress-bar" aria-label="已带回 ${percent}%"><i style="width:${percent}%"></i></div>${sheepLegend()}<div class="pasture-board">${field(s, sum.outside, 'outside', numbers)}<div class="pasture-bridge" aria-hidden="true"><span>→</span><small>答对就带回</small></div>${field(s, sum.caught, 'inside', numbers)}</div><div class="herd-story ${sum.event?.type || ''}" role="status">${esc(eventText(s))}</div><div class="pasture-return"><div><strong>${q ? '当前题和输入都已保留' : '正常练习进度'}</strong><p>答对带过去 · 答错留在原地 · 已抓到的词进入加练时逃回来</p></div><button class="primary" data-action="pasture-practice">${q?.finished ? '返回当前答案' : q ? '继续正常练习' : '开始正常练习'} →</button></div>${sum.skipped.length ? `<p class="pasture-note">${sum.skipped.length} 个本轮跳过的词留在待记草场，不计为答错。</p>` : ''}${sum.unknown.length ? '<p class="pasture-note">部分旧记录没有本轮答题结果，暂时留在待记草场；后续作答会自动更新。</p>' : ''}<div class="pasture-footnote"><span>与练习页共用模式、分组、范围和轮次 · 新词自动加入 · 照打与拓展不改变羊的位置</span></div></main>`;
 }
 
 // One animation loop per mounted grassland; all coordinates remain inside its bounds.
@@ -78,16 +100,27 @@ export function mountSheepRoaming(root = document) {
     last = 0,
     disposed = false;
   const items = [];
-  function openSpot(field, random, except = null) {
+  function openSpot(field, random, el, except = null) {
     const peers = items.filter((a) => a.field === field && a !== except),
-      w = Math.max(1, field.clientWidth - 67),
-      h = Math.max(1, field.clientHeight - 67);
+      w = Math.max(1, field.clientWidth - el.offsetWidth),
+      h = Math.max(1, field.clientHeight - el.offsetHeight);
     let best = { x: random(), y: random() },
-      distance = -1;
-    for (let i = 0; i < 20; i++) {
+      distance = -Infinity;
+    for (let i = 0; i < 32; i++) {
       const spot = { x: random(), y: random() },
+        cx = spot.x * w + el.offsetWidth / 2,
+        cy = spot.y * h + el.offsetHeight / 2,
         d = peers.length
-          ? Math.min(...peers.map((a) => Math.hypot((a.x - spot.x) * w, (a.y - spot.y) * h)))
+          ? Math.min(
+              ...peers.map((a) => {
+                const ax =
+                    a.x * Math.max(0, field.clientWidth - a.el.offsetWidth) + a.el.offsetWidth / 2,
+                  ay =
+                    a.y * Math.max(0, field.clientHeight - a.el.offsetHeight) +
+                    a.el.offsetHeight / 2;
+                return Math.hypot(ax - cx, ay - cy) - (a.el.offsetWidth + el.offsetWidth) / 2;
+              }),
+            )
           : 1;
       if (d > distance) {
         best = spot;
@@ -96,6 +129,21 @@ export function mountSheepRoaming(root = document) {
     }
     return best;
   }
+  function fitFields() {
+    const narrow = matchMedia('(max-width: 700px)').matches;
+    const heights = fields.map((field) => {
+      const tokens = [...field.querySelectorAll('.sheep-token')],
+        area = tokens.reduce((sum, el) => sum + el.offsetWidth * el.offsetHeight, 0),
+        base = narrow ? 280 : 375;
+      return Math.max(base, Math.ceil(area / Math.max(1, field.clientWidth) / 0.55) + 42);
+    });
+    fields.forEach((field, index) => {
+      field.parentElement.style.height = `${narrow ? heights[index] : Math.max(...heights)}px`;
+    });
+  }
+  fitFields();
+  const resize = new ResizeObserver(fitFields);
+  for (const field of fields) resize.observe(field.parentElement);
   for (const field of fields)
     for (const el of field.querySelectorAll('.sheep-token')) {
       let seed = Number(el.dataset.seed) || 1;
@@ -103,8 +151,8 @@ export function mountSheepRoaming(root = document) {
         seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
         return seed / 4294967296;
       };
-      const spot = openSpot(field, random),
-        target = openSpot(field, random);
+      const spot = openSpot(field, random, el),
+        target = openSpot(field, random, el);
       items.push({
         field,
         el,
@@ -114,7 +162,7 @@ export function mountSheepRoaming(root = document) {
         ty: target.y,
         pause: random() * 2,
         rest: false,
-        speed: 13 + random() * 20,
+        speed: (13 + random() * 20) * Math.sqrt(67 / Math.max(42, el.offsetWidth)),
       });
     }
   function tick(now) {
@@ -135,7 +183,7 @@ export function mountSheepRoaming(root = document) {
         if (d < Math.max(2, step)) {
           a.pause = 0.7 + a.random() * 2.8;
           a.rest = a.random() < 0.5;
-          const target = openSpot(a.field, a.random, a);
+          const target = openSpot(a.field, a.random, a.el, a);
           a.tx = target.x;
           a.ty = target.y;
         } else {
@@ -143,12 +191,21 @@ export function mountSheepRoaming(root = document) {
             vy = dy / d;
           for (const other of items)
             if (other !== a && other.field === a.field) {
-              const ox = x - other.x * w,
-                oy = y - other.y * h,
-                near = Math.hypot(ox, oy);
-              if (near > 0 && near < 60) {
-                vx += ((ox / near) * (60 - near)) / 25;
-                vy += ((oy / near) * (60 - near)) / 25;
+              const ox =
+                  x +
+                  a.el.offsetWidth / 2 -
+                  (other.x * Math.max(0, a.field.clientWidth - other.el.offsetWidth) +
+                    other.el.offsetWidth / 2),
+                oy =
+                  y +
+                  a.el.offsetHeight / 2 -
+                  (other.y * Math.max(0, a.field.clientHeight - other.el.offsetHeight) +
+                    other.el.offsetHeight / 2),
+                near = Math.hypot(ox, oy),
+                spacing = (a.el.offsetWidth + other.el.offsetWidth) / 2;
+              if (near > 0 && near < spacing) {
+                vx += ((ox / near) * (spacing - near)) / 25;
+                vy += ((oy / near) * (spacing - near)) / 25;
               }
             }
           const length = Math.max(1, Math.hypot(vx, vy));
@@ -170,6 +227,7 @@ export function mountSheepRoaming(root = document) {
   return () => {
     disposed = true;
     cancelAnimationFrame(frame);
+    resize.disconnect();
   };
 }
 

@@ -65,7 +65,6 @@ const icons = {
 };
 let altPending = false;
 let stopRoaming = () => {},
-  pasturePages = { outside: 0, inside: 0 },
   configOpen = false,
   geometryObserver;
 const mobileLayout = matchMedia('(max-width: 900px)');
@@ -631,7 +630,6 @@ function render(focus = false) {
             collapsed: !!S.settings.sidebarCollapsed,
             pasture: true,
           }),
-          pasturePages,
         )
       : view === 'practice'
         ? practice()
@@ -2103,10 +2101,8 @@ const actions = {
     else if (current().finished) ensureResources(entry());
     else $('#answer-input')?.focus();
   },
-  'pasture-page': (el) => {
-    pasturePages[el.dataset.side] = Math.max(0, Number(el.dataset.page));
-    render();
-  },
+  'pasture-bundle': (el) =>
+    toast(`${el.dataset.label}代表 ${el.dataset.value} 个词，体型随当前词数自动组合。`),
   'pasture-inspect': (el) => {
     const key = el.dataset.key,
       status = sheepStatus(S, key);
@@ -2126,7 +2122,7 @@ const actions = {
   },
   'pasture-help': () =>
     showModal(
-      '<h2>草场说明</h2><div class="herd-help"><p>每个词条是一只羊。正常练习答对后移到右边；两次机会都错，留在左边。第一次答错但第二次改对，也会带回来。</p><p>已答对的词再次进入正常加练时，会从右边逃回左边。再次答对，再带回来。加练的次数与间隔完全沿用正常练习。</p><p>跳过的词本轮留在左边，不计错误。反复照打和词形拓展不改变正式练习进度。</p><p>这里与练习页共用模式、分组、范围和轮次。完整拼写与字母提示共用拼写进度；认义选择显示其正常进度。只有练习页开始新一轮，羊群才随之重置。</p><p>小羊自由走动，经过鼠标或获得键盘焦点时会停下来。点击已带回的小羊可以查看词条。</p></div>',
+      '<h2>草场说明</h2><div class="herd-help"><p>待记草场显示还未带回的词，记忆草场显示本轮已答对的词。巨大羊代表 500 词，大羊 100 词，中羊 50 词，小羊 10 词，小小羊 1 词，两侧均按词数自动组合。正常练习答对后，对应词数移到右边；两次机会都错，留在左边。第一次答错但第二次改对，也会带回来。</p><p>已答对的词再次进入正常加练时，会从右边逃回左边。再次答对，再带回来。加练的次数与间隔完全沿用正常练习。</p><p>跳过的词本轮留在左边，不计错误。反复照打和词形拓展不改变正式练习进度。</p><p>这里与练习页共用模式、分组、范围和轮次。完整拼写与字母提示共用拼写进度；认义选择显示其正常进度。只有练习页开始新一轮，羊群才随之重置。</p><p>不同体型的羊自由走动，经过鼠标或获得键盘焦点时会停下来。点击羊可以查看代表的词数；代表 1 词的小小羊保留单词状态查询。</p></div>',
     ),
   nav: (el) => navigate(el.dataset.view),
   theme: () => {

@@ -814,3 +814,102 @@
 .modal-scroll:has(.coin-history) > h2 {
   font-weight: 600;
 }
+/* Count-sized sheep share the existing skins and roaming behaviour. */
+.size-giant {
+  --sheep-width: 128px;
+}
+.size-large {
+  --sheep-width: 102px;
+}
+.size-medium {
+  --sheep-width: 80px;
+}
+.size-small {
+  --sheep-width: 58px;
+}
+.size-tiny {
+  --sheep-width: 38px;
+}
+.sheep-token[class*='size-'] {
+  width: max(44px, calc(var(--sheep-width) + 8px));
+  height: calc(var(--sheep-width) * 0.861 + 24px);
+  min-height: 44px;
+  gap: 0;
+}
+.sheep-token[class*='size-'] .sheep-svg {
+  width: var(--sheep-width);
+  height: calc(var(--sheep-width) * 0.861);
+}
+.sheep-value {
+  color: #36543b;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.sheep-legend {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+  margin: 0 0 24px;
+  padding: 0 4px;
+}
+.legend-unit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.legend-unit strong,
+.legend-unit small {
+  display: block;
+}
+.legend-unit strong {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.legend-unit small {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+  white-space: nowrap;
+}
+.legend-sheep {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 52px;
+  height: 48px;
+}
+.legend-sheep .sheep-svg {
+  width: calc(var(--sheep-width) * 0.4);
+  height: auto;
+}
+.field-footer {
+  align-items: flex-start;
+}
+.field-footer > span:first-child {
+  line-height: 1.7;
+  flex: 1;
+}
+.field-footer > span:last-child {
+  white-space: nowrap;
+}
+.field-heading h2 {
+  font-weight: 600;
+}
+:root[data-theme='dark'] .sheep-value {
+  color: #dfebd5;
+}
+@media (max-width: 700px) {
+  .sheep-legend {
+    justify-content: flex-start;
+    gap: 12px 20px;
+  }
+  .legend-unit {
+    min-width: 120px;
+  }
+}
