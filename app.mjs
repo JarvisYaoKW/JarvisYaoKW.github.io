@@ -1652,7 +1652,10 @@ async function extend(key, scope = 'all') {
   showModal('<h2>正在准备拓展练习…</h2><p>正在读取词形与同源词资料。</p>');
   await loadFamilyData(e?.english).catch(() => null);
   let items = extensionItems(e);
-  if (!items.length || (verbMeanings(e).length && !selectVerbForms(e).length)) {
+  if (
+    scope !== 'family' &&
+    (!items.length || (verbMeanings(e).length && !selectVerbForms(e).length))
+  ) {
     await ensureResources(e);
     items = extensionItems(e);
   }
