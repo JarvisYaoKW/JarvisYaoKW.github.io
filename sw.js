@@ -1,4 +1,4 @@
-const CACHE = 'cijian-browser-v17-sheep-only';
+const CACHE = 'cijian-browser-v18-mochi-skins';
 const SHELL = [
   '/',
   '/index.html',
@@ -15,6 +15,8 @@ const SHELL = [
   '/practice-layout.mjs',
   '/herd.mjs',
   '/herd-view.mjs',
+  '/sheep-art.mjs',
+  '/sheep-motion.mjs',
   '/pasture.css',
   '/pronunciation-view.mjs',
   '/pronunciation-data.mjs',

@@ -1,11 +1,11 @@
 export const SHEEP_SKINS = Object.freeze(
   [
-    { id: 'S001', name: '白绵羊', variant: 0, cost: 0, starter: true },
-    { id: 'S002', name: '浅棕羊', variant: 1, cost: 0, starter: true },
-    { id: 'S003', name: '小羊', variant: 2, cost: 0, starter: true },
-    { id: 'S004', name: '卷角羊', variant: 3, cost: 0, starter: true },
-    { id: 'S005', name: '垂耳羊', variant: 4, cost: 0, starter: true },
-    { id: 'S006', name: '深灰羊', variant: 5, cost: 0, starter: true },
+    { id: 'S001', name: '原味糯米', variant: 0, cost: 0, starter: true },
+    { id: 'S002', name: '黑芝麻', variant: 1, cost: 0, starter: true },
+    { id: 'S003', name: '焦糖', variant: 2, cost: 0, starter: true },
+    { id: 'S004', name: '云灰', variant: 3, cost: 0, starter: true },
+    { id: 'S005', name: '卷角', variant: 4, cost: 0, starter: true },
+    { id: 'S006', name: '花斑', variant: 5, cost: 0, starter: true },
   ].map(Object.freeze),
 );
 const integer = (n) => Number.isSafeInteger(n) && n >= 0;

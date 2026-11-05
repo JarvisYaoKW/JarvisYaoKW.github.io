@@ -40,7 +40,7 @@ test('both pastures show exact weighted counts without paging or modifying progr
     html = pasturePage(s, '');
   assert.match(html, /待记草场/);
   assert.doesNotMatch(html, /出发草场|pasture-page|下一页羊群|sheep-value|field-footer/);
-  const sides = [...html.matchAll(/<div class="sheep-roam">(.*?)<\/div>/g)].map((m) => m[1]);
+  const sides = [...html.matchAll(/<div class="sheep-roam">([\s\S]*?)<\/div>/g)].map((m) => m[1]);
   const values = sides.map((side) =>
     [...side.matchAll(/data-value="(\d+)"/g)].reduce((sum, m) => sum + Number(m[1]), 0),
   );

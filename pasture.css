@@ -198,23 +198,6 @@
   overflow: visible;
   flex-shrink: 0;
 }
-.sheep-head {
-  transform-origin: 50px 38px;
-}
-.sheep-token.grazing .sheep-head {
-  transform: rotate(18deg) translate(1px, 3px);
-}
-.walking .leg-front {
-  animation: sheep-step 0.48s ease-in-out infinite alternate;
-  transform-origin: 35px 41px;
-}
-.walking .leg-back {
-  animation: sheep-step 0.48s ease-in-out infinite alternate-reverse;
-  transform-origin: 30px 40px;
-}
-.walking .sheep-body {
-  animation: sheep-bob 0.48s ease-in-out infinite alternate;
-}
 .sheep-name {
   font-size: 10px;
   line-height: 1.15;
@@ -832,13 +815,13 @@
 }
 .sheep-token[class*='size-'] {
   width: max(44px, calc(var(--sheep-width) + 8px));
-  height: max(44px, calc(var(--sheep-width) * 0.861 + 8px));
+  height: max(44px, calc(var(--sheep-width) * 0.642857 + 8px));
   min-height: 44px;
   gap: 0;
 }
 .sheep-token[class*='size-'] .sheep-svg {
   width: var(--sheep-width);
-  height: calc(var(--sheep-width) * 0.861);
+  height: calc(var(--sheep-width) * 0.642857);
 }
 .sheep-legend {
   display: flex;

@@ -1,3 +1,4 @@
+import { renderSkinSheep, bindSheepMotion } from './sheep-art.mjs';
 import { SHEEP_SKINS, walletSummary, selectedSkin } from './pasture-economy.mjs';
 import { category } from './engine.mjs';
 import { herdSummary, sheepStatus, sheepBundles, SHEEP_SIZES } from './herd.mjs';
@@ -9,13 +10,7 @@ const esc = (s) =>
 export const sheepSeed = (key) =>
   [...key].reduce((n, c) => (Math.imul(n, 31) + c.codePointAt(0)) >>> 0, 7);
 export function sheepSVG(variant = 0) {
-  const v = variant % 6,
-    lamb = v === 2,
-    ram = v === 3,
-    floppy = v === 4;
-  const wool = ['#fffdf3', '#e5ccb0', '#fffcf6', '#ebe3d2', '#dac6ac', '#787973'][v];
-  const face = ['#6c645b', '#786153', '#a58b79', '#655b51', '#8c7662', '#4f514e'][v];
-  return `<svg class="sheep-svg variant-${v}" viewBox="0 0 72 62" aria-hidden="true"><ellipse cx="34" cy="54" rx="25" ry="4" fill="#526a3820"/><g class="sheep-body" style="--wool:${wool};--face:${face}" transform="${lamb ? 'translate(8 7) scale(.8)' : v === 1 ? 'translate(-2 0) scale(1.05 1)' : ''}"><g class="sheep-legs" stroke="${face}" stroke-width="4.4" stroke-linecap="round"><path class="leg-front" d="M24 40v12M44 40v12"/><path class="leg-back" d="M17 39v11M36 41v11"/></g><circle cx="10" cy="33" r="5" fill="${wool}" stroke="#9e96893d"/><path d="M13 39C3 36 5 23 14 21C12 11 25 9 30 15C35 6 49 11 48 20C60 20 59 35 51 39C49 48 34 48 29 44C22 48 12 46 13 39Z" fill="${wool}" stroke="#9e968957" stroke-width="1.2"/>${v === 0 || ram ? '<path d="M18 24q-4 5 2 7m11-12q-4 5 2 7m10 6q-5 1-3 6m-17 0q-4 0-3 4" stroke="#c9c1af" stroke-width="1.2" fill="none" stroke-linecap="round"/>' : ''}<g class="sheep-head"><ellipse cx="53" cy="33" rx="9" ry="11" fill="${face}"/><ellipse cx="45" cy="${floppy ? 30 : 25}" rx="${floppy ? 7 : 6}" ry="3.6" transform="rotate(${floppy ? -40 : 25} 45 26)" fill="${face}"/><ellipse cx="61" cy="${floppy ? 30 : 24}" rx="${floppy ? 7 : 6}" ry="3.6" transform="rotate(${floppy ? 40 : -25} 61 26)" fill="${face}"/>${ram ? '<path d="M45 24c-11-14-18 5-7 6q6-1 3-6m19 0c10-14 17 4 7 6q-5-1-2-6" fill="none" stroke="#b69d79" stroke-width="4" stroke-linecap="round"/>' : ''}<circle cx="51" cy="31" r="1.4" fill="#fff"/><circle cx="57" cy="31" r="1.4" fill="#fff"/><path d="M53 38q2 2 4 0" stroke="#f1e5d5" stroke-width="1.2" fill="none" stroke-linecap="round"/></g><path class="sheep-scarf" d="M46 42q8 3 14-1l-1 4q-7 3-13-1Z" fill="#a6ae8c"/></g></svg>`;
+  return renderSkinSheep(variant);
 }
 const names = {
   caught: '已带回',
@@ -149,6 +144,9 @@ export function mountSheepRoaming(root = document) {
         field,
         el,
         random,
+        animate: bindSheepMotion(el.querySelector('.sheep-svg')),
+        action: 'idle',
+        actionTime: random() * 2.8,
         ...spot,
         tx: target.x,
         ty: target.y,
@@ -173,8 +171,8 @@ export function mountSheepRoaming(root = document) {
           d = Math.hypot(dx, dy),
           step = a.speed * dt;
         if (d < Math.max(2, step)) {
-          a.pause = 0.7 + a.random() * 2.8;
           a.rest = a.random() < 0.5;
+          a.pause = a.rest ? 4.2 : 0.7 + a.random() * 2.8;
           const target = openSpot(a.field, a.random, a.el, a);
           a.tx = target.x;
           a.ty = target.y;
@@ -205,11 +203,18 @@ export function mountSheepRoaming(root = document) {
           y = Math.min(h, Math.max(0, y + (vy / length) * step));
           a.x = w ? x / w : 0;
           a.y = h ? y / h : 0;
-          a.el.style.setProperty('--facing', vx < 0 ? '-1' : '1');
+          a.el.style.setProperty('--facing', vx < 0 ? '1' : '-1');
         }
       } else if (!held) a.pause -= dt;
-      a.el.classList.toggle('walking', !held && a.pause <= 0);
-      a.el.classList.toggle('grazing', !held && a.pause > 0 && a.rest);
+      const action = !held && a.pause <= 0 ? 'walk' : !held && a.rest ? 'graze' : 'idle';
+      if (action !== a.action) {
+        a.action = action;
+        a.actionTime = 0;
+      }
+      if (!held) a.actionTime += dt;
+      a.animate(action, a.actionTime, media.matches);
+      a.el.classList.toggle('walking', action === 'walk');
+      a.el.classList.toggle('grazing', action === 'graze');
       a.el.style.transform = `translate(${Math.min(w, Math.max(0, x))}px,${Math.min(h, Math.max(0, y))}px)`;
       a.el.style.zIndex = String(1 + Math.floor(y));
     }
