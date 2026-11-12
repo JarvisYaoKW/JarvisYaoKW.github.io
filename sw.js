@@ -1,8 +1,10 @@
-const CACHE = 'cijian-browser-v20-chinese-search';
+const CACHE = 'cijian-browser-v21-daily-learning';
 const SHELL = [
   '/',
   '/index.html',
   '/app.mjs',
+  '/daily-learning.mjs',
+  '/daily-view.mjs',
   '/vocabulary-search.mjs',
   '/shortcuts.mjs',
   '/navigation.mjs',

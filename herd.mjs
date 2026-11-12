@@ -1,3 +1,4 @@
+import { activeRound, isDaily } from './daily-learning.mjs';
 import { category, pool } from './engine.mjs';
 
 export const SHEEP_SIZES = Object.freeze([
@@ -25,21 +26,26 @@ export function sheepBundles(count) {
 
 // Read-only projection of the normal practice round. No question queue or score lives here.
 export function sheepStatus(s, key) {
-  const r = s.rounds[category(s)],
+  const r = activeRound(s),
     q = r.current;
   const result = Object.hasOwn(r.outcomes || {}, key) ? r.outcomes[key] : null;
   if (result === 'correct') return 'caught';
   if (result === 'escaped') return 'escaped';
   if (result === 'wrong') return 'waiting';
   if (result === 'skipped' || r.skipped?.includes(key)) return 'skipped';
+  if (isDaily(s)) return 'free';
   // Old saves may predate the per-round ledger; only the current result is certain.
   if (q?.key === key && q.finished)
     return q.outcome === 'correct' ? 'caught' : q.outcome === 'wrong' ? 'waiting' : 'skipped';
   return r.done.includes(key) ? 'unconfirmed' : 'free';
 }
 export function herdSummary(s) {
-  const r = s.rounds[category(s)],
-    entries = pool(s),
+  const r = activeRound(s),
+    entries = isDaily(s)
+      ? (s.daily?.task?.items || [])
+          .map((i) => s.entries[i.key])
+          .filter((e) => e && !e.recognitionOnly)
+      : pool(s),
     keys = new Set(entries.map((e) => e.key));
   const caught = entries.filter((e) => sheepStatus(s, e.key) === 'caught');
   return {

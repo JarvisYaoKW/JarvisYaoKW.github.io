@@ -1,3 +1,4 @@
+import { activeRound, isDaily, dailySummary } from './daily-learning.mjs';
 import { renderSkinSheep, bindSheepMotion } from './sheep-art.mjs';
 import { SHEEP_SKINS, walletSummary, selectedSkin } from './pasture-economy.mjs';
 import { category } from './engine.mjs';
@@ -42,7 +43,7 @@ function token(s, e, numbers) {
   const seed = sheepSeed(e.key),
     skin = selectedSkin(s, seed),
     status = sheepStatus(s, e.key),
-    q = s.rounds[category(s)].current;
+    q = activeRound(s).current;
   const known = status === 'caught' || (q?.key === e.key && q.finished),
     selected = q?.key === e.key && !q.finished;
   return `<button class="sheep-token ${status}${selected ? ' selected' : ''}" data-action="pasture-inspect" data-key="${esc(e.key)}" data-seed="${seed}" data-variant="${skin.variant}" data-skin-id="${skin.id}" aria-label="羊 ${numbers.get(e.key)}，${names[status]}${known ? '，' + esc(e.english) : ''}" title="${esc('#' + numbers.get(e.key) + ' · ' + names[status] + ' · 皮肤 ' + skin.id + ' ' + skin.name + (known ? ' · ' + e.english : ''))}"><span class="sheep-direction">${sheepSVG(skin.variant)}</span><span class="sheep-name">${known ? esc(e.english) : '#' + numbers.get(e.key)}</span>${e.favorite ? '<i class="sheep-favorite" aria-label="已收藏">●</i>' : ''}${status === 'escaped' ? '<i class="sheep-escape">↶</i>' : ''}</button>`;
@@ -70,13 +71,13 @@ function sheepLegend() {
 }
 export function pasturePage(s, toolbar) {
   const sum = herdSummary(s),
-    r = s.rounds[category(s)],
+    r = activeRound(s),
     q = r.current,
     numbers = new Map(Object.keys(s.entries).map((k, i) => [k, String(i + 1).padStart(3, '0')]));
   const percent = sum.entries.length
     ? Math.round((sum.caught.length / sum.entries.length) * 100)
     : 0;
-  return `<main class="main pasture-main">${toolbar}${walletBarHTML(s)}<div class="herd-progress"><div><strong>正常练习 · 第 ${r.number} 轮</strong><span>${category(s) === 'typing' ? '拼写进度' : '认义选择进度'}</span><span>已带回 <b>${sum.caught.length}</b> / ${sum.entries.length} 词</span><span>基础已练 ${sum.done} 条 · 加练 ${sum.extra} 次</span></div><span>逃回 ${sum.escaped.length} 词</span></div><div class="herd-progress-bar" aria-label="已带回 ${percent}%"><i style="width:${percent}%"></i></div>${sheepLegend()}<div class="pasture-board">${field(s, sum.outside, 'outside', numbers)}<div class="pasture-bridge" aria-hidden="true"><span>→</span><small>答对就带回</small></div>${field(s, sum.caught, 'inside', numbers)}</div><div class="herd-story ${sum.event?.type || ''}" role="status">${esc(eventText(s))}</div><div class="pasture-return"><div><strong>${q ? '当前题和输入都已保留' : '正常练习进度'}</strong><p>答对带过去 · 答错留在原地 · 已抓到的词进入加练时逃回来</p></div><button class="primary" data-action="pasture-practice">${q?.finished ? '返回当前答案' : q ? '继续正常练习' : '开始正常练习'} →</button></div>${sum.skipped.length ? `<p class="pasture-note">${sum.skipped.length} 个本轮跳过的词留在待记草场，不计为答错。</p>` : ''}${sum.unknown.length ? '<p class="pasture-note">部分旧记录没有本轮答题结果，暂时留在待记草场；后续作答会自动更新。</p>' : ''}<div class="pasture-footnote"><span>与练习页共用模式、分组、范围和轮次 · 新词自动加入 · 照打与拓展不改变羊的位置</span></div></main>`;
+  return `<main class="main pasture-main">${toolbar}${walletBarHTML(s)}<div class="herd-progress"><div><strong>${isDaily(s) ? '每日学习 · ' + (s.daily?.task?.day || '待生成任务') : '整库练习 · 第 ' + r.number + ' 轮'}</strong><span>${category(s) === 'typing' ? '拼写进度' : '认义选择进度'}</span><span>已带回 <b>${sum.caught.length}</b> / ${sum.entries.length} 词</span><span>${isDaily(s) ? '新词 ' + dailySummary(s).newDone + '/' + dailySummary(s).newTotal + ' · 复习 ' + dailySummary(s).reviewDone + '/' + dailySummary(s).reviewTotal : '基础已练 ' + sum.done + ' 条 · 加练 ' + sum.extra + ' 次'}</span></div><span>逃回 ${sum.escaped.length} 词</span></div><div class="herd-progress-bar" aria-label="已带回 ${percent}%"><i style="width:${percent}%"></i></div>${sheepLegend()}<div class="pasture-board">${field(s, sum.outside, 'outside', numbers)}<div class="pasture-bridge" aria-hidden="true"><span>→</span><small>答对就带回</small></div>${field(s, sum.caught, 'inside', numbers)}</div><div class="herd-story ${sum.event?.type || ''}" role="status">${esc(eventText(s))}</div><div class="pasture-return"><div><strong>${q ? '当前题和输入都已保留' : '正常练习进度'}</strong><p>答对带过去 · 答错留在原地 · 已抓到的词进入加练时逃回来</p></div><button class="primary" data-action="pasture-practice">${q?.finished ? '返回当前答案' : q ? '继续练习' : '开始练习'} →</button></div>${sum.skipped.length ? `<p class="pasture-note">${sum.skipped.length} 个本轮跳过的词留在待记草场，不计为答错。</p>` : ''}${sum.unknown.length ? '<p class="pasture-note">部分旧记录没有本轮答题结果，暂时留在待记草场；后续作答会自动更新。</p>' : ''}<div class="pasture-footnote"><span>${isDaily(s) ? '显示当前每日任务 · 照打不移动羊，回忆拼写答对后带回' : '与练习页共用模式、分组、范围和轮次 · 新词自动加入 · 照打与拓展不改变羊的位置'}</span></div></main>`;
 }
 
 // One animation loop per mounted grassland; all coordinates remain inside its bounds.

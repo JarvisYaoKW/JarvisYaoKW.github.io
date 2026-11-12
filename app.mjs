@@ -1,3 +1,19 @@
+import {
+  isDaily,
+  ensureDaily,
+  dailyConfig,
+  activeRound,
+  practiceState,
+  createDailyTask,
+  nextDailyQuestion,
+  submitDaily,
+  skipDaily,
+  dailyHint,
+  dailySummary,
+  observeNormalAnswer,
+  dailyCandidates,
+} from './daily-learning.mjs';
+import { dailyControls, dailyMetrics, dailyIdle, dailyFeedback } from './daily-view.mjs';
 import { matchesVocabulary, bindVocabularySearch } from './vocabulary-search.mjs';
 import { practiceShortcut } from './shortcuts.mjs';
 import { ensureWallet, selectSkin, redeemSkin } from './pasture-economy.mjs';
@@ -31,12 +47,12 @@ import { familyForEntry, loadFamilyData } from './family-data.mjs';
 import { verbMeanings, selectVerbForms, extensionItems } from './verb-forms.mjs';
 import { senseModel, splitMeanings } from './pronunciation-view.mjs';
 import {
-  previousQuestion,
+  previousQuestion as normalPreviousQuestion,
   skipQuestion,
   initialState,
   norm,
   uniq,
-  category,
+  category as normalCategory,
   statsOf,
   totalWrong,
   mergeEntries,
@@ -49,6 +65,8 @@ import {
   blankRound,
   compare,
 } from './engine.mjs';
+const category = (s) => (isDaily(s) ? 'typing' : normalCategory(s));
+const previousQuestion = (s, before) => normalPreviousQuestion(practiceState(s), before);
 const $ = (s) => document.querySelector(s),
   esc = (s) =>
     String(s ?? '').replace(
@@ -94,14 +112,14 @@ const app = $('#app'),
   modal = $('#modal');
 let review = null;
 function reviewedQuestion() {
-  const r = S.rounds[category(S)],
+  const r = activeRound(S),
     q =
       review?.category === category(S) && review.round === r.number
         ? r.history?.[review.index]
         : null;
   return q?.finished && Object.hasOwn(S.entries, q.key) ? q : null;
 }
-const current = () => reviewedQuestion() || S.rounds[category(S)].current;
+const current = () => reviewedQuestion() || activeRound(S).current;
 function previousButton() {
   return (
     '<button class="secondary" data-action="previous" ' +
@@ -112,12 +130,19 @@ function previousButton() {
   );
 }
 function reviewLimit() {
-  const r = S.rounds[category(S)];
+  const r = activeRound(S);
   return Number.isInteger(r.current?.historyIndex)
     ? r.current.historyIndex
     : r.history?.length || 0;
 }
 function reviewNextLabel() {
+  if (
+    isDaily(S) &&
+    !reviewedQuestion() &&
+    current()?.stage === 'copy' &&
+    current()?.outcome === 'correct'
+  )
+    return '回忆拼写';
   return reviewedQuestion() && review.index >= reviewLimit() - 1 ? '回到当前题' : '下一题';
 }
 const entry = () => S.entries[current()?.key];
@@ -228,8 +253,9 @@ function formatTime(ms) {
   return sec < 60 ? sec + ' 秒' : Math.floor(sec / 60) + ' 分 ' + (sec % 60) + ' 秒';
 }
 function metrics() {
+  if (isDaily(S)) return dailyMetrics(S);
   const m = metricData(),
-    r = S.rounds[category(S)],
+    r = activeRound(S),
     done = r.done.filter(
       (k) => S.entries[k] && (category(S) !== 'typing' || !S.entries[k].recognitionOnly),
     ).length;
@@ -268,20 +294,21 @@ function favoriteButton(e) {
   return `<button class="favorite-btn ${e.favorite ? 'on' : ''}" data-action="favorite" data-key="${esc(e.key)}" aria-label="${e.favorite ? '取消收藏' : '收藏'} ${esc(e.english)}" title="${e.favorite ? '取消收藏' : '收藏并加入加练'}${view === 'practice' && current()?.finished && !modal.open ? '（F）' : ''}">${e.favorite ? icons.filled : icons.star}</button>`;
 }
 function idle() {
-  const r = S.rounds[category(S)],
+  if (isDaily(S)) return dailyIdle(S);
+  const r = activeRound(S),
     list = pool(S),
     pending = list.filter((e) => !r.done.includes(e.key)).length;
   return `<section class="welcome"><h2>${list.length ? '开始练习' : '选择练习内容'}</h2><p>${list.length ? '当前范围有 ' + list.length + ' 条内容，' + pending + ' 条本轮未练。' : '可以调整左侧的分组和范围，或导入自己的词库。'}</p><div class="welcome-actions"><button class="primary large" data-action="start">${pending ? '开始 / 继续本轮练习' : '查看本轮完成情况'}</button></div><div class="key-guide"><span><kbd>Enter</kbd> 检查 / 下一题</span><span><kbd>Shift Enter</kbd> 跳过</span><span><kbd>R</kbd> 答案后照打</span></div></section>`;
 }
 function practice() {
-  const r = S.rounds[category(S)],
+  const r = activeRound(S),
     q = current(),
     e = entry();
-  return `<main class="main practice-main" id="main-content" tabindex="-1">${practiceContext(S, { mobile: mobileLayout.matches, collapsed: !!S.settings.sidebarCollapsed })}${metrics()}${q && e ? question(q, e) : idle()}${!q && previousQuestion(S) ? `<div class="question-actions">${previousButton()}</div>` : ''}${pasturePeek(S)}<footer class="practice-footer"><span>第 ${r.number} 轮 · ${category(S) === 'typing' ? '完整拼写与字母提示共用进度' : '选择题进度'} · 自动保存</span><button data-action="keys" class="text-btn">键盘操作指南</button></footer></main>`;
+  return `<main class="main practice-main" id="main-content" tabindex="-1">${practiceContext(S, { mobile: mobileLayout.matches, collapsed: !!S.settings.sidebarCollapsed })}${metrics()}${q && e ? question(q, e) : idle()}${!q && previousQuestion(S) ? `<div class="question-actions">${previousButton()}</div>` : ''}${pasturePeek(S)}<footer class="practice-footer"><span>${isDaily(S) ? '每日学习 · ' + (S.daily?.task?.day || '待生成任务') : '第 ' + r.number + ' 轮 · ' + (category(S) === 'typing' ? '完整拼写与字母提示共用进度' : '选择题进度')} · 自动保存</span><button data-action="keys" class="text-btn">键盘操作指南</button></footer></main>`;
 }
 function question(q, e) {
   const isChoice = category(S) === 'choice';
-  return `<section class="question-card"><div class="question-top"><span class="question-stage">${reviewedQuestion() ? '回看 · 第 ' + (review.index + 1) + ' 题' : q.kind === 'extra' ? '本轮加练' : '当前练习'}</span>${badges(e)}${!reviewedQuestion() && q.coinReward === 1 ? '<span class="coin-reward" role="status">+1 金币</span>' : ''}${favoriteButton(e)}</div>${reviewedQuestion() ? '<p class="review-notice">回看已答题，不重复计分；当前题的输入已保留。</p>' : ''}<div class="question-label">${isChoice ? '选择对应的中文释义' : e.type === 'sentence' ? '根据提示，输入完整英文句子' : '看中文，写出英文' + (e.type === 'phrase' ? '短语' : '单词')}</div>${
+  return `<section class="question-card"><div class="question-top"><span class="question-stage">${reviewedQuestion() ? '回看 · 第 ' + (review.index + 1) + ' 题' : isDaily(S) ? (q.kind === 'daily-new' ? '新词 · ' : '复习 · ') + (q.stage === 'copy' ? '照打' : '回忆拼写') : q.kind === 'extra' ? '本轮加练' : '当前练习'}</span>${badges(e)}${!reviewedQuestion() && q.coinReward === 1 ? '<span class="coin-reward" role="status">+1 金币</span>' : ''}${favoriteButton(e)}</div>${reviewedQuestion() ? '<p class="review-notice">回看已答题，不重复计分；当前题的输入已保留。</p>' : ''}<div class="question-label">${isDaily(S) && q.stage === 'copy' ? '看词义，照着英文输入' : isChoice ? '选择对应的中文释义' : e.type === 'sentence' ? '根据提示，输入完整英文句子' : '看中文，写出英文' + (e.type === 'phrase' ? '短语' : '单词')}</div>${
     isChoice
       ? `<h1 class="english-prompt">${esc(e.english)}</h1>${englishBlock(e.english, e.supplement)}<div class="options">${choices(
           S,
@@ -294,13 +321,17 @@ function question(q, e) {
           .join(
             '',
           )}</div>${q.options.length < 4 ? '<p class="muted">有效释义不足四组，本题使用 ' + q.options.length + ' 个选项。</p>' : ''}`
-      : `<div class="meaning-prompt">${e.meanings.map((m) => `<p>${esc(m)}</p>`).join('')}</div>${englishBlock(e.english, e.supplement)}${S.settings.mode === 'hint' && !q.finished ? hintInput(q, e) : `<div class="input-wrap ${q.finished ? q.outcome : q.tries ? 'retry' : ''}"><input id="answer-input" aria-label="输入英文答案" autocomplete="off" autocapitalize="off" spellcheck="false" lang="en" placeholder="在这里输入英文…" value="${esc(q.outcome === 'skipped' ? e.english : q.input)}" ${q.finished ? 'readonly' : ''}><span id="answer-state">${q.finished ? (q.outcome === 'correct' ? '✓' : q.outcome === 'skipped' ? '↷' : '×') : ''}</span></div>`}`
-  }<div class="feedback ${q.finished ? q.outcome : q.tries ? 'retry' : ''}" role="status">${q.finished ? (q.outcome === 'skipped' ? '↷ 已跳过，本题不计对错；本轮不再加练这个词。' : q.outcome === 'correct' ? (q.tries ? '✓ 已改对，本题计正确一次' : '✓ 回答正确。') : '× 两次机会已用完，本题计错误一次，已加入常错本。') : q.tries ? '第一次未答对，还可以尝试一次。' : isChoice ? '按数字键选择，也可以点击选项。' : '准备好后，按 Enter 检查答案。'}</div><div class="question-actions">${previousButton()}${q.finished ? `<button class="primary" data-action="next">${reviewNextLabel()} <kbd>Enter</kbd></button><button class="secondary" data-action="repeat">原词照打 <kbd>R</kbd></button><button class="secondary" data-action="extend">派生词族 <kbd>E</kbd></button>` : `${isChoice ? '' : `<button class="primary" data-action="submit">检查答案 <kbd>Enter</kbd></button>`}<button class="secondary" data-action="skip">跳过 <kbd>Shift Enter</kbd></button>${q.tries ? '<button class="text-btn" data-action="repeat">临时照打 <kbd>Alt</kbd></button>' : ''}`}</div>${reviewedQuestion() && review.index < reviewLimit() - 1 ? '<button class="text-btn" data-action="resume-question">回到当前题</button>' : ''}${q.finished ? answerCard(e) : ''}</section>`;
+      : `<div class="meaning-prompt">${e.meanings.map((m) => `<p>${esc(m)}</p>`).join('')}</div>${englishBlock(e.english, e.supplement)}${(isDaily(S) || S.settings.mode === 'hint') && !q.finished ? hintInput(q, e) : `<div class="input-wrap ${q.finished ? q.outcome : q.tries ? 'retry' : ''}"><input id="answer-input" aria-label="输入英文答案" autocomplete="off" autocapitalize="off" spellcheck="false" lang="en" placeholder="在这里输入英文…" value="${esc(q.outcome === 'skipped' ? e.english : q.input)}" ${q.finished ? 'readonly' : ''}><span id="answer-state">${q.finished ? (q.outcome === 'correct' ? '✓' : q.outcome === 'skipped' ? '↷' : '×') : ''}</span></div>`}`
+  }<div class="feedback ${q.finished ? q.outcome : q.tries ? 'retry' : ''}" role="status">${isDaily(S) ? dailyFeedback(q, S) : q.finished ? (q.outcome === 'skipped' ? '↷ 已跳过，本题不计对错；本轮不再加练这个词。' : q.outcome === 'correct' ? (q.tries ? '✓ 已改对，本题计正确一次' : '✓ 回答正确。') : '× 两次机会已用完，本题计错误一次，已加入常错本。') : q.tries ? '第一次未答对，还可以尝试一次。' : isChoice ? '按数字键选择，也可以点击选项。' : '准备好后，按 Enter 检查答案。'}</div><div class="question-actions">${previousButton()}${q.finished ? `<button class="primary" data-action="next">${reviewNextLabel()} <kbd>Enter</kbd></button><button class="secondary" data-action="repeat">原词照打 <kbd>R</kbd></button><button class="secondary" data-action="extend">派生词族 <kbd>E</kbd></button>` : `${isChoice ? '' : `<button class="primary" data-action="submit">检查答案 <kbd>Enter</kbd></button>`}<button class="secondary" data-action="skip">跳过 <kbd>Shift Enter</kbd></button>${q.tries ? '<button class="text-btn" data-action="repeat">临时照打 <kbd>Alt</kbd></button>' : ''}`}</div>${reviewedQuestion() && review.index < reviewLimit() - 1 ? '<button class="text-btn" data-action="resume-question">回到当前题</button>' : ''}${q.finished ? answerCard(e) : ''}</section>`;
 }
 function hintLetters(q, e) {
   const word = [...e.english],
     typed = [...q.input],
-    mask = [...hintMask(q, e.english, S.settings.hint)],
+    mask = [
+      ...(isDaily(S) && dailyHint(S, q) === 0
+        ? [...e.english].map((c) => (/[a-z]/i.test(c) ? '＿' : c)).join(' ')
+        : hintMask(q, e.english, isDaily(S) ? dailyHint(S, q) : S.settings.hint)),
+    ],
     allCorrect = compare(q.input, e.english, e.type, S.settings);
   return (
     word
@@ -566,7 +597,7 @@ function answerCard(e) {
   }</div><details class="word-details"><summary>词形、词族与词源 <span>＋</span></summary>${forms.length ? `<h4>动词形态</h4><div class="word-chips">${forms.map((f) => `<span>${esc(f.word)} <small>${esc(f.label)}</small></span>`).join('')}</div>` : ''}${family.length ? `<h4>派生词族 · ${family.length} 项</h4><div class="word-chips">${family.map((f) => `<span>${esc(f.word)} <small>${esc(f.meaning || f.label || '相关派生词')}</small></span>`).join('')}</div>${family.some((f) => f.origin === 'wordnet') ? `<p class="muted"><a href="https://wordnet.princeton.edu/" target="_blank" rel="noopener noreferrer">词族资料 · WordNet</a> · <a href="/wordbooks/WordNet-LICENSE.txt" target="_blank" rel="noopener noreferrer">许可</a> · <a href="/wordbooks/families-NOTICE.txt" target="_blank" rel="noopener noreferrer">资料来源</a></p>` : ''}` : ''}${s?.pendingFamily?.length ? `<details class="pending-family"><summary>待补充词族（不进入默认练习） · ${s.pendingFamily.length}</summary><p class="muted">这些关联词的释义或优先级尚待确认。</p><div class="word-chips">${s.pendingFamily.map((f) => `<span>${esc(f.word)} <small>${esc(f.reason)}</small></span>`).join('')}</div></details>` : ''}<h4>词源记忆</h4><p class="etymology">${esc(s?.etymologyZh || s?.etymology || '尚无可核验的词源资料，可联网重试或手动补充。')}</p>${s?.etymologyZh ? `<p class="muted">${esc(s.etymologySource ? '词根线索来源：有道词典 · ' + s.etymologySource : '词源中文为机器翻译或手动补充，请结合原文理解。')}</p>` : ''}${s?.etymologyZh && s.etymology ? `<details><summary>查看 Wiktionary 词源参考</summary><p class="etymology">${esc(s.etymology)}</p></details>` : ''}<button class="secondary" data-action="extend" data-key="${esc(e.key)}">练习派生词族 <kbd>E</kbd></button><button class="text-btn" data-action="extend" data-kind="all" data-key="${esc(e.key)}">含动词变化 <kbd>Shift E</kbd></button></details><div class="source-row"><span>${sourceLinks(s) || esc(e.source)}</span><button class="text-btn" data-action="refresh-resource" data-key="${esc(e.key)}">${resourceTasks.has(e.key) ? '资料获取中…' : '联网补充 / 重试'}</button></div></div>`;
 }
 function library() {
-  const cat = category(S);
+  const cat = normalCategory(S);
   let list = Object.values(S.entries).filter(
     (e) =>
       (view === 'favorite' ? e.favorite : view === 'wrong' ? statsOf(e, cat).wrong > 0 : true) &&
@@ -670,6 +701,48 @@ function render(focus = false) {
   prepareEnglishDefinitions();
 }
 function bindPracticeControls(root = document) {
+  for (const field of root.querySelectorAll('[data-daily-config]')) {
+    const readField = () => {
+      const d = ensureDaily(S),
+        key = field.dataset.dailyConfig;
+      d.config = dailyConfig({
+        ...d.config,
+        [key]: ['group', 'scope'].includes(key) ? field.value : Number(field.value),
+      });
+      if (key === 'target') {
+        for (const option of root.querySelectorAll('#daily-ratio option'))
+          option.textContent =
+            Math.round(Number(option.value) * 100) +
+            '% · 最多 ' +
+            Math.floor(d.config.target * Number(option.value)) +
+            ' 词';
+      }
+      const preview = document.querySelector('#daily-preview');
+      if (preview) {
+        const candidates = dailyCandidates(S),
+          c = d.config;
+        preview.textContent =
+          '可安排新词 ' +
+          Math.min(c.target, candidates.fresh.length) +
+          ' 词、到期复习 ' +
+          Math.min(Math.floor(c.target * c.ratio), candidates.due.length) +
+          ' 词。';
+      }
+      persist(0);
+    };
+    field.addEventListener('input', readField);
+    field.addEventListener('change', () => {
+      readField();
+      if (field.tagName === 'SELECT') render();
+      else if (field.dataset.dailyConfig === 'target') field.value = S.daily.config.target;
+    });
+    if (field.type === 'range')
+      field.addEventListener('input', () => {
+        root.querySelector('#' + field.id + '-value').textContent =
+          Math.round(Number(field.value) * 100) + '%';
+      });
+  }
+
   for (const radio of root.querySelectorAll('input[name="practice-mode"]'))
     radio.addEventListener('change', (ev) => {
       stopAudio();
@@ -812,7 +885,8 @@ async function checkAnswer(value) {
   }
   active = false;
   lastTick = 0;
-  const result = submit(S, input);
+  const result = isDaily(S) ? submitDaily(S, input) : submit(S, input);
+  if (!isDaily(S)) observeNormalAnswer(S);
   persist(0);
   render(true);
   if (result === 'retry') {
@@ -829,7 +903,7 @@ function skipCurrent() {
   stopAudio();
   active = false;
   lastTick = 0;
-  if (skipQuestion(S)) {
+  if (isDaily(S) ? skipDaily(S) : skipQuestion(S)) {
     persist(0);
     render();
     ensureResources(entry());
@@ -857,7 +931,7 @@ function start() {
     render(true);
     return;
   }
-  const q = nextQuestion(S);
+  const q = isDaily(S) ? nextDailyQuestion(S) : nextQuestion(S);
   persist(0);
   render(true);
   if (!q) showCompletion();
@@ -869,7 +943,7 @@ function previous() {
   stopAudio();
   active = false;
   lastTick = 0;
-  review = { category: category(S), round: S.rounds[category(S)].number, index: found.index };
+  review = { category: category(S), round: activeRound(S).number, index: found.index };
   render();
   ensureResources(entry());
 }
@@ -883,7 +957,7 @@ function resumeQuestion() {
 }
 function next() {
   if (reviewedQuestion()) {
-    const r = S.rounds[category(S)],
+    const r = activeRound(S),
       limit = reviewLimit();
     let i = review.index + 1;
     while (i < limit && !S.entries[r.history[i]?.key]) i++;
@@ -897,11 +971,16 @@ function next() {
   }
   if (!current()?.finished) return;
   stopAudio();
-  S.rounds[category(S)].current = null;
+  activeRound(S).current = null;
   start();
 }
 function showCompletion() {
-  const r = S.rounds[category(S)],
+  if (isDaily(S)) {
+    render();
+    return;
+  }
+
+  const r = activeRound(S),
     all = Object.values(S.entries).filter((e) => category(S) !== 'typing' || !e.recognitionOnly),
     globalDone = all.every((e) => r.done.includes(e.key));
   showModal(
@@ -941,7 +1020,7 @@ function toggleFavorite(key) {
   const e = S.entries[key];
   e.favorite = !e.favorite;
   e.favoritedAt = e.favorite ? Date.now() : 0;
-  if (e.favorite && S.rounds[category(S)].done.includes(key)) schedule(S, e);
+  if (e.favorite && S.rounds[normalCategory(S)].done.includes(key)) schedule(S, e);
   persist(0);
   const pos = $('#answer-input')?.selectionStart;
   render();
@@ -2101,6 +2180,25 @@ function exchangeSheepSkin(id) {
   toast('已兑换 ' + result.skin.id + ' ' + result.skin.name + '。');
 }
 const actions = {
+  'learning-plan': (el) => {
+    review = null;
+    stopAudio();
+    active = false;
+    S.aux = null;
+    S.settings.learningPlan = el.dataset.plan;
+    if (isDaily(S)) {
+      if (!S.daily)
+        ensureDaily(S).config = dailyConfig({ group: S.settings.group, scope: S.settings.scope });
+      else ensureDaily(S);
+    }
+    persist(0);
+    render(true);
+  },
+  'daily-start': () => {
+    createDailyTask(S);
+    start();
+  },
+
   'sheep-skins': showSkins,
   'coin-history': () => showModal(coinHistoryHTML(S)),
   'skin-select': (el) => setSheepSkin(el.dataset.skin),
@@ -2188,11 +2286,12 @@ const actions = {
   backup,
   'export-csv': exportCSV,
   'toggle-category': () => {
-    S.settings.mode = category(S) === 'typing' ? 'choice' : 'blank';
+    S.settings.mode = normalCategory(S) === 'typing' ? 'choice' : 'blank';
     persist();
     render();
   },
   'practice-list': () => {
+    S.settings.learningPlan = 'round';
     S.settings.group = libraryGroup;
     S.settings.scope = view === 'favorite' ? 'favorite' : 'wrong';
     persist();
@@ -2202,7 +2301,7 @@ const actions = {
     closeModal();
     S.settings.scope = 'all';
     S.settings.group = '';
-    S.rounds[category(S)].current = null;
+    activeRound(S).current = null;
     persist();
     start();
   },
@@ -2375,6 +2474,7 @@ async function init() {
     const { state } = await api('/api/state');
     S = state || initialState();
     S.aux = null;
+    if (S.daily || isDaily(S)) ensureDaily(S);
     const hadWallet = !!S.pastureWallet;
     ensureWallet(S);
     if (!hadWallet) persist(0);

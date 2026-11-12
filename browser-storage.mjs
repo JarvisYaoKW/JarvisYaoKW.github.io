@@ -1,4 +1,5 @@
 import { validWallet } from './pasture-economy.mjs';
+import { isDaily, activeRound, validDailyState } from './daily-learning.mjs';
 const DB_NAME = 'cijian-typing-v1';
 let database;
 export function openDatabase() {
@@ -41,6 +42,7 @@ export function validLocalState(s) {
   return !!(
     s &&
     s.version === 1 &&
+    validDailyState(s.daily) &&
     (s.pastureWallet == null || validWallet(s.pastureWallet)) &&
     s.entries &&
     typeof s.entries === 'object' &&
@@ -102,11 +104,12 @@ export async function saveLocalState(state, expectedRevision, { restore = false 
 }
 export async function retainLocalDraft(state) {
   try {
-    const q = state.rounds?.[state.settings.mode === 'choice' ? 'choice' : 'typing']?.current;
+    const q = activeRound(state)?.current;
     localStorage.setItem(
       'cijian-last-question',
       JSON.stringify({
         revision: state.revision,
+        dailyTask: isDaily(state) ? state.daily?.task?.day : null,
         category: state.settings.mode === 'choice' ? 'choice' : 'typing',
         round: state.rounds[state.settings.mode === 'choice' ? 'choice' : 'typing'].number,
         q: q
@@ -119,6 +122,7 @@ export async function retainLocalDraft(state) {
               outcome: q.outcome,
               ms: q.ms,
               hints: q.hints,
+              stage: q.stage,
               options: q.options,
             }
           : null,
@@ -131,6 +135,21 @@ export function recoverQuestionDraft(state) {
   try {
     const draft = JSON.parse(localStorage.getItem('cijian-last-question') || 'null');
     if (!draft || !draft.q || draft.q.finished || draft.revision !== state.revision) return state;
+    if (draft.dailyTask) {
+      const task = state.daily?.task;
+      if (
+        isDaily(state) &&
+        task?.day === draft.dailyTask &&
+        task.current?.key === draft.q.key &&
+        task.current.stage === draft.q.stage &&
+        task.current.kind === draft.q.kind &&
+        !task.current.finished
+      ) {
+        task.current = { ...task.current, ...draft.q };
+      }
+      return state;
+    }
+    if (isDaily(state)) return state;
     const round = state.rounds[draft.category],
       current = round?.current;
     if (

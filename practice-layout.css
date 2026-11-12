@@ -1,4 +1,56 @@
 /* Shared settings column; the existing palette and typing surfaces remain authoritative. */
+.plan-switch {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+.plan-switch button {
+  flex: 1;
+  min-height: 40px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.plan-switch button[aria-pressed='true'] {
+  background: var(--green);
+  color: var(--surface);
+  font-weight: 600;
+}
+.daily-fields {
+  display: grid;
+  gap: 10px;
+}
+.daily-fields label:not(:first-of-type) {
+  margin-top: 10px;
+}
+.daily-fields output {
+  float: right;
+  color: var(--green);
+  font-variant-numeric: tabular-nums;
+}
+.daily-fields input[type='number'] {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+}
+.daily-fields input[type='range'] {
+  width: 100%;
+  accent-color: var(--green);
+}
+.daily-welcome p {
+  max-width: 62ch;
+  margin-inline: auto;
+}
+.daily-metrics strong {
+  font-variant-numeric: tabular-nums;
+}
+.practice-main .metrics.daily-metrics > div:nth-child(n + 4) {
+  display: block;
+}
 :root {
   --muted: #5b6d61;
   --layout-space: 24px;
