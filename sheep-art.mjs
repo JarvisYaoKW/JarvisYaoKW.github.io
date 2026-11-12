@@ -8,10 +8,20 @@ export const SHEEP_ART_IDS = Object.freeze([
   'ash',
   'ram',
   'patches',
+  'strawberry',
+  'mint',
+  'sky',
+  'lavender',
+  'lemon',
+  'peach',
+  'cherry',
+  'midnight',
 ]);
 let drawingId = 0;
 export function renderSkinSheep(variant = 0) {
-  const index = Number.isInteger(variant) ? ((variant % 6) + 6) % 6 : 0;
+  const index = Number.isInteger(variant)
+    ? ((variant % SHEEP_ART_IDS.length) + SHEEP_ART_IDS.length) % SHEEP_ART_IDS.length
+    : 0;
   return renderSheepSVG(SHEEP_ART_IDS[index], `pasture-sheep-${++drawingId}`).replace(
     '<svg ',
     `<svg class="sheep-svg variant-${index}" data-art="${SHEEP_ART_IDS[index]}" focusable="false" `,

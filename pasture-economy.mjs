@@ -6,6 +6,14 @@ export const SHEEP_SKINS = Object.freeze(
     { id: 'S004', name: '云灰', variant: 3, cost: 0, starter: true },
     { id: 'S005', name: '卷角', variant: 4, cost: 0, starter: true },
     { id: 'S006', name: '花斑', variant: 5, cost: 0, starter: true },
+    { id: 'S007', name: '草莓奶昔', variant: 6, cost: 100, starter: false },
+    { id: 'S008', name: '薄荷云', variant: 7, cost: 100, starter: false },
+    { id: 'S009', name: '晴空蓝', variant: 8, cost: 100, starter: false },
+    { id: 'S010', name: '薰衣草', variant: 9, cost: 100, starter: false },
+    { id: 'S011', name: '奶油柠檬', variant: 10, cost: 100, starter: false },
+    { id: 'S012', name: '蜜桃乌龙', variant: 11, cost: 100, starter: false },
+    { id: 'S013', name: '樱桃布丁', variant: 12, cost: 100, starter: false },
+    { id: 'S014', name: '午夜蓝', variant: 13, cost: 100, starter: false },
   ].map(Object.freeze),
 );
 const integer = (n) => Number.isSafeInteger(n) && n >= 0;
@@ -16,7 +24,7 @@ export function createWallet(opening = 0) {
     balance: opening,
     earned: opening,
     spent: 0,
-    owned: SHEEP_SKINS.map((s) => s.id),
+    owned: SHEEP_SKINS.filter((s) => s.starter).map((s) => s.id),
     selected: 'mixed',
     recent: opening ? [{ id: 'opening', type: 'opening', amount: opening, at: Date.now() }] : [],
   };
@@ -32,7 +40,7 @@ export function validWallet(w) {
     Array.isArray(w.owned) &&
     w.owned.every((id) => typeof id === 'string') &&
     new Set(w.owned).size === w.owned.length &&
-    SHEEP_SKINS.every((s) => w.owned.includes(s.id)) &&
+    SHEEP_SKINS.filter((s) => s.starter).every((s) => w.owned.includes(s.id)) &&
     (w.selected === 'mixed' || w.owned.includes(w.selected)) &&
     Array.isArray(w.recent) &&
     w.recent.length <= 100 &&

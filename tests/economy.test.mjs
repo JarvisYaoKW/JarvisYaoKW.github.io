@@ -61,8 +61,8 @@ test('legacy correct counts migrate once without changing progress', () => {
 
 test('all starter skins remain available without spending', () => {
   const s = state();
-  assert.equal(SHEEP_SKINS.length, 6);
-  for (const skin of SHEEP_SKINS) {
+  assert.equal(SHEEP_SKINS.filter((skin) => skin.starter).length, 6);
+  for (const skin of SHEEP_SKINS.filter((skin) => skin.starter)) {
     assert.ok(s.pastureWallet.owned.includes(skin.id));
     assert.equal(selectSkin(s, skin.id), true);
   }
@@ -71,11 +71,11 @@ test('all starter skins remain available without spending', () => {
 
 test('future redemption requires balance and cannot charge twice', () => {
   const s = state();
-  const catalog = [...SHEEP_SKINS, { id: 'S007', name: 'Test skin', cost: 3, variant: 0 }];
-  assert.equal(redeemSkin(s, 'S007', catalog).reason, 'insufficient');
+  const catalog = [...SHEEP_SKINS, { id: 'S015', name: 'Test skin', cost: 3, variant: 0 }];
+  assert.equal(redeemSkin(s, 'S015', catalog).reason, 'insufficient');
   s.pastureWallet = createWallet(5);
-  assert.equal(redeemSkin(s, 'S007', catalog).ok, true);
-  assert.equal(redeemSkin(s, 'S007', catalog).reason, 'owned');
+  assert.equal(redeemSkin(s, 'S015', catalog).ok, true);
+  assert.equal(redeemSkin(s, 'S015', catalog).reason, 'owned');
   assert.equal(s.pastureWallet.balance, 2);
   assert.equal(s.pastureWallet.spent, 3);
   assert.ok(validWallet(s.pastureWallet));

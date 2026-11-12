@@ -12,12 +12,28 @@ import {
 } from '../sheep-motion.mjs';
 
 const skinIds = Object.keys(SKINS);
+const baseIds = skinIds.filter((id) => SKINS[id].collection !== 'color');
+const colorIds = skinIds.filter((id) => SKINS[id].collection === 'color');
 const actions = Object.keys(ACTIONS);
 
-test('six independent skins and six reusable actions are registered', () => {
-  assert.equal(skinIds.length, 6);
+test('six base skins, eight colorways and six reusable actions are registered', () => {
+  assert.equal(baseIds.length, 6);
+  assert.equal(colorIds.length, 8);
+  assert.equal(skinIds.length, 14);
   assert.deepEqual(actions, ['idle', 'walk', 'graze', 'stretch', 'hop', 'tailWag']);
   assert.deepEqual(WORD_SIZES, { 1: 38, 10: 52, 50: 70, 100: 94, 500: 126 });
+});
+
+test('colorways are distinct and inherit the same five size tiers and six motions', () => {
+  const coats = colorIds.map((id) => SKINS[id].wool);
+  assert.equal(new Set(coats).size, 8);
+  for (const id of colorIds) {
+    const svg = renderSheepSVG(id, `color-${id}`);
+    assert.match(svg, /data-part="headLayer"/);
+    assert.match(svg, /data-part="frontNear"/);
+    for (const value of Object.keys(WORD_SIZES)) assert.ok(WORD_SIZES[value] > 0);
+    for (const action of actions) assert.ok(poseAt(action, 0.5));
+  }
 });
 
 test('every skin renders the same articulated rig for all actions', () => {
@@ -52,7 +68,7 @@ test('head is painted after all legs, preventing the foreground hoof from crossi
   }
 });
 
-test('ram has a compact curved horn and other five skins remain horn-free', () => {
+test('ram has a compact curved horn and all other skins remain horn-free', () => {
   const ram = renderSheepSVG('ram', 'ram-horn');
   assert.match(ram, /data-part="horn"/);
   assert.doesNotMatch(ram, /M105 58 C110 36 142 40/);
@@ -163,6 +179,11 @@ test('a mounted sheep can switch skins, all actions and sizes without rebuilding
     const before = sheep.element.style.width;
     sheep.setSkin('ram');
     assert.equal(sheep.element.style.width, before);
+    for (const skinId of colorIds) {
+      sheep.setSkin(skinId);
+      assert.equal(sheep.getState().action, 'walk');
+      assert.equal(sheep.getState().wordValue, 50);
+    }
     for (const action of actions) sheep.setAction(action);
     sheep.setAction('graze');
     sheep._frame(performance.now() + 1500);

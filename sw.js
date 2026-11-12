@@ -1,4 +1,4 @@
-const CACHE = 'cijian-browser-v18-mochi-skins';
+const CACHE = 'cijian-browser-v19-colorway-skins';
 const SHELL = [
   '/',
   '/index.html',
