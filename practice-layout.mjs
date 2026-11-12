@@ -1,4 +1,4 @@
-import { isDaily, dailyConfig, dailyPool } from './daily-learning.mjs';
+import { isDaily, dailyConfig, dailyPool, dailyMode, DAILY_MODES } from './daily-learning.mjs';
 import { planSwitch, dailyControls } from './daily-view.mjs';
 import { category, pool } from './engine.mjs';
 const esc = (s) =>
@@ -20,7 +20,7 @@ export function practiceSelection(s) {
       group: c.group === '__ungrouped' ? '未分组' : c.group || '全部词条',
       scope: { all: '全部内容', wrong: '只练常错', favorite: '只练收藏' }[c.scope],
       count: s.daily?.task?.items.length ?? dailyPool(s, c).length,
-      mode: '每日学习',
+      mode: DAILY_MODES[dailyMode(s)],
     };
   }
 

@@ -10,6 +10,7 @@ import {
   dailySummary,
   ensureDaily,
   dailyConfig,
+  dailyQuestionMode,
   dailyCandidates,
   localDay,
   addDays,
@@ -93,6 +94,60 @@ test('new copy then spaced recall: copying changes no score, coins, dates or she
   assert.equal(JSON.stringify(s.rounds), before);
   assert.equal(submitDaily(s, 'again'), 'ignored');
   assert.equal(s.pastureWallet.balance, 1);
+});
+test('daily mode switches preserve the current question and mixed-mode history', () => {
+  const s = state(1);
+  const task = createDailyTask(s, DAY);
+  const copy = nextDailyQuestion(s, DAY);
+  copy.input = 'wo';
+  s.daily.config.mode = 'blank';
+  assert.equal(nextDailyQuestion(s, DAY), copy);
+  assert.equal(copy.input, 'wo');
+  assert.equal(dailyQuestionMode(copy), 'hint');
+  answer(s);
+
+  const recall = advance(s);
+  assert.equal(recall.stage, 'recall');
+  assert.equal(dailyQuestionMode(recall), 'blank');
+  assert.equal(submitDaily(s, 'bad', DAY), 'retry');
+  assert.equal(submitDaily(s, 'bad', DAY), 'wrong');
+  s.daily.config.mode = 'choice';
+
+  const choice = advance(s);
+  assert.equal(dailyQuestionMode(choice), 'choice');
+  assert.equal(previousQuestion(practiceState(s)).question.mode, 'blank');
+  assert.equal(submitDaily(s, 'wrong-choice', DAY), 'retry');
+  assert.equal(submitDaily(s, choice.key, DAY), 'correct');
+  assert.equal(s.entries[choice.key].stats.choice.correct, 1);
+  assert.equal(s.entries[choice.key].stats.typing.wrong, 1);
+  assert.equal(s.pastureWallet.balance, 1);
+  assert.equal(s.daily.records[choice.key].due, addDays(DAY, 1));
+  assert.equal(dailySummary(s).newDone, 1);
+  assert.equal(s.daily.task, task);
+  assert.equal(validLocalState(JSON.parse(JSON.stringify(s))), true);
+});
+test('new words can start directly in choice mode and recognition-only entries never require typing', () => {
+  const s = state(2);
+  s.entries.word0.recognitionOnly = true;
+  s.daily.config.mode = 'choice';
+  const task = createDailyTask(s, DAY, () => 0.9);
+  assert.equal(task.items.length, 2);
+  const first = nextDailyQuestion(s, DAY);
+  assert.equal(first.stage, 'recall');
+  assert.equal(dailyQuestionMode(first), 'choice');
+  assert.match(dailyFeedback(first, s), /数字键/);
+
+  const only = state(1);
+  only.entries.word0.recognitionOnly = true;
+  only.daily.config.mode = 'choice';
+  createDailyTask(only, DAY);
+  only.daily.config.mode = 'blank';
+  const q = nextDailyQuestion(only, DAY);
+  assert.equal(dailyQuestionMode(q), 'choice');
+  assert.equal(submitDaily(only, q.key, DAY), 'correct');
+  assert.equal(herdSummary(only).caught.length, 1);
+  assert.equal(dailySummary(only).complete, true);
+  assert.doesNotMatch(dailyControls(only), /daily-reviewHint/);
 });
 test('two wrong attempts count once, repeat later, and subsequent success schedules an early review', () => {
   const s = state(1);

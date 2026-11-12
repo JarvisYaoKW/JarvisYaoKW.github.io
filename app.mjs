@@ -9,6 +9,7 @@ import {
   submitDaily,
   skipDaily,
   dailyHint,
+  dailyQuestionMode,
   dailySummary,
   observeNormalAnswer,
   dailyCandidates,
@@ -68,6 +69,7 @@ import {
   compare,
 } from './engine.mjs';
 const category = (s) => (isDaily(s) ? 'typing' : normalCategory(s));
+const questionMode = (q) => (isDaily(S) ? dailyQuestionMode(q) : S.settings.mode);
 const previousQuestion = (s, before) => normalPreviousQuestion(practiceState(s), before);
 const $ = (s) => document.querySelector(s),
   esc = (s) =>
@@ -288,8 +290,8 @@ function groupOptions(value, withAll = true) {
   );
 }
 
-function badges(e) {
-  const st = statsOf(e, category(S));
+function badges(e, cat) {
+  const st = statsOf(e, cat);
   return `<div class="badges">${e.favorite ? '<span class="badge favorite">' + icons.filled + ' 已收藏</span>' : ''}${st.wrong ? `<span class="badge wrong">常错 · 已错 ${st.wrong} 次</span>` : ''}</div>`;
 }
 function favoriteButton(e) {
@@ -309,8 +311,9 @@ function practice() {
   return `<main class="main practice-main" id="main-content" tabindex="-1">${practiceContext(S, { mobile: mobileLayout.matches, collapsed: !!S.settings.sidebarCollapsed })}${metrics()}${q && e ? question(q, e) : idle()}${!q && previousQuestion(S) ? `<div class="question-actions">${previousButton()}</div>` : ''}${pasturePeek(S)}<footer class="practice-footer"><span>${isDaily(S) ? '每日学习 · ' + (S.daily?.task?.day || '待生成任务') : '第 ' + r.number + ' 轮 · ' + (category(S) === 'typing' ? '完整拼写与字母提示共用进度' : '选择题进度')} · 自动保存</span><button data-action="keys" class="text-btn">键盘操作指南</button></footer></main>`;
 }
 function question(q, e) {
-  const isChoice = category(S) === 'choice';
-  return `<section class="question-card"><div class="question-top"><span class="question-stage">${reviewedQuestion() ? '回看 · 第 ' + (review.index + 1) + ' 题' : isDaily(S) ? (q.kind === 'daily-new' ? '新词 · ' : '复习 · ') + (q.stage === 'copy' ? '照打' : '回忆拼写') : q.kind === 'extra' ? '本轮加练' : '当前练习'}</span>${badges(e)}${!reviewedQuestion() && q.coinReward === 1 ? '<span class="coin-reward" role="status">+1 金币</span>' : ''}${favoriteButton(e)}</div>${reviewedQuestion() ? '<p class="review-notice">回看已答题，不重复计分；当前题的输入已保留。</p>' : ''}<div class="question-label">${isDaily(S) && q.stage === 'copy' ? '看词义，照着英文输入' : isChoice ? '选择对应的中文释义' : e.type === 'sentence' ? '根据提示，输入完整英文句子' : '看中文，写出英文' + (e.type === 'phrase' ? '短语' : '单词')}</div>${
+  const mode = questionMode(q);
+  const isChoice = mode === 'choice';
+  return `<section class="question-card"><div class="question-top"><span class="question-stage">${reviewedQuestion() ? '回看 · 第 ' + (review.index + 1) + ' 题' : isDaily(S) ? (q.kind === 'daily-new' ? '新词 · ' : '复习 · ') + (q.stage === 'copy' ? '照打' : isChoice ? '中文选择' : '回忆拼写') : q.kind === 'extra' ? '本轮加练' : '当前练习'}</span>${badges(e, isChoice ? 'choice' : 'typing')}${!reviewedQuestion() && q.coinReward === 1 ? '<span class="coin-reward" role="status">+1 金币</span>' : ''}${favoriteButton(e)}</div>${reviewedQuestion() ? '<p class="review-notice">回看已答题，不重复计分；当前题的输入已保留。</p>' : ''}<div class="question-label">${isDaily(S) && q.stage === 'copy' ? '看词义，照着英文输入' : isChoice ? '选择对应的中文释义' : e.type === 'sentence' ? '根据提示，输入完整英文句子' : '看中文，写出英文' + (e.type === 'phrase' ? '短语' : '单词')}</div>${
     isChoice
       ? `<h1 class="english-prompt">${esc(e.english)}</h1>${englishBlock(e.english, e.supplement)}<div class="options">${choices(
           S,
@@ -323,7 +326,7 @@ function question(q, e) {
           .join(
             '',
           )}</div>${q.options.length < 4 ? '<p class="muted">有效释义不足四组，本题使用 ' + q.options.length + ' 个选项。</p>' : ''}`
-      : `<div class="meaning-prompt">${e.meanings.map((m) => `<p>${esc(m)}</p>`).join('')}</div>${englishBlock(e.english, e.supplement)}${(isDaily(S) || S.settings.mode === 'hint') && !q.finished ? hintInput(q, e) : `<div class="input-wrap ${q.finished ? q.outcome : q.tries ? 'retry' : ''}"><input id="answer-input" aria-label="输入英文答案" autocomplete="off" autocapitalize="off" spellcheck="false" lang="en" placeholder="在这里输入英文…" value="${esc(q.outcome === 'skipped' ? e.english : q.input)}" ${q.finished ? 'readonly' : ''}><span id="answer-state">${q.finished ? (q.outcome === 'correct' ? '✓' : q.outcome === 'skipped' ? '↷' : '×') : ''}</span></div>`}`
+      : `<div class="meaning-prompt">${e.meanings.map((m) => `<p>${esc(m)}</p>`).join('')}</div>${englishBlock(e.english, e.supplement)}${mode === 'hint' && !q.finished ? hintInput(q, e) : `<div class="input-wrap ${q.finished ? q.outcome : q.tries ? 'retry' : ''}"><input id="answer-input" aria-label="输入英文答案" autocomplete="off" autocapitalize="off" spellcheck="false" lang="en" placeholder="在这里输入英文…" value="${esc(q.outcome === 'skipped' ? e.english : q.input)}" ${q.finished ? 'readonly' : ''}><span id="answer-state">${q.finished ? (q.outcome === 'correct' ? '✓' : q.outcome === 'skipped' ? '↷' : '×') : ''}</span></div>`}`
   }<div class="feedback ${q.finished ? q.outcome : q.tries ? 'retry' : ''}" role="status">${isDaily(S) ? dailyFeedback(q, S) : q.finished ? (q.outcome === 'skipped' ? '↷ 已跳过，本题不计对错；本轮不再加练这个词。' : q.outcome === 'correct' ? (q.tries ? '✓ 已改对，本题计正确一次' : '✓ 回答正确。') : '× 两次机会已用完，本题计错误一次，已加入常错本。') : q.tries ? '第一次未答对，还可以尝试一次。' : isChoice ? '按数字键选择，也可以点击选项。' : '准备好后，按 Enter 检查答案。'}</div><div class="question-actions">${previousButton()}${q.finished ? `<button class="primary" data-action="next">${reviewNextLabel()} <kbd>Enter</kbd></button><button class="secondary" data-action="repeat">原词照打 <kbd>R</kbd></button><button class="secondary" data-action="extend">派生词族 <kbd>E</kbd></button>` : `${isChoice ? '' : `<button class="primary" data-action="submit">检查答案 <kbd>Enter</kbd></button>`}<button class="secondary" data-action="skip">跳过 <kbd>Shift Enter</kbd></button>${q.tries ? '<button class="text-btn" data-action="repeat">临时照打 <kbd>Alt</kbd></button>' : ''}`}</div>${reviewedQuestion() && review.index < reviewLimit() - 1 ? '<button class="text-btn" data-action="resume-question">回到当前题</button>' : ''}${q.finished ? answerCard(e) : ''}</section>`;
 }
 function hintLetters(q, e) {
@@ -710,7 +713,7 @@ function bindPracticeControls(root = document) {
         key = field.dataset.dailyConfig;
       d.config = dailyConfig({
         ...d.config,
-        [key]: ['group', 'scope'].includes(key) ? field.value : Number(field.value),
+        [key]: field.tagName === 'SELECT' ? field.value : Number(field.value),
       });
       if (key === 'target') {
         for (const option of root.querySelectorAll('#daily-ratio option'))
@@ -740,8 +743,10 @@ function bindPracticeControls(root = document) {
     field.addEventListener('input', readField);
     field.addEventListener('change', () => {
       readField();
-      if (field.tagName === 'SELECT') render();
-      else if (field.dataset.dailyConfig === 'target') field.value = S.daily.config.target;
+      if (field.tagName === 'SELECT') {
+        render();
+        document.getElementById(field.id)?.focus({ preventScroll: true });
+      } else if (field.dataset.dailyConfig === 'target') field.value = S.daily.config.target;
     });
     if (field.type === 'range')
       field.addEventListener('input', () => {
@@ -2073,7 +2078,7 @@ async function auxAdd() {
 function detail(key, load = true) {
   const e = S.entries[key];
   showModal(
-    `<h2>${esc(e.english)}</h2>${badges(e)}${answerCard(e)}<div class="modal-actions"><button class="secondary" data-action="edit" data-key="${esc(key)}">编辑词条</button><button class="text-btn" data-action="close-modal">关闭</button></div>`,
+    `<h2>${esc(e.english)}</h2>${badges(e, isChoice ? 'choice' : 'typing')}${answerCard(e)}<div class="modal-actions"><button class="secondary" data-action="edit" data-key="${esc(key)}">编辑词条</button><button class="text-btn" data-action="close-modal">关闭</button></div>`,
   );
   if (load) {
     const refresh = () => {
@@ -2437,7 +2442,7 @@ document.addEventListener('keydown', (ev) => {
   const command = practiceShortcut(ev, {
     auxiliary: S.aux?.type || '',
     finished: !!q?.finished,
-    choice: category(S) === 'choice',
+    choice: questionMode(q) === 'choice',
   });
   if (!command) return;
   ev.preventDefault();
@@ -2503,7 +2508,7 @@ window.addEventListener('pagehide', () => {
 setInterval(() => {
   if (!S || view !== 'practice' || S.aux || modal.open || !active || document.hidden) return;
   const q = current();
-  if (!q || q.finished || category(S) !== 'typing') return;
+  if (!q || q.finished || questionMode(q) === 'choice') return;
   const now = performance.now();
   if (now - lastTick > 5000) {
     active = false;

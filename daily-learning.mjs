@@ -1,7 +1,18 @@
-import { blankRound, pool, submit, skipQuestion, totalWrong, compare } from './engine.mjs';
+import {
+  blankRound,
+  category,
+  pool,
+  submit,
+  skipQuestion,
+  totalWrong,
+  compare,
+} from './engine.mjs';
 
 export const REVIEW_DAYS = [1, 3, 7, 14, 30];
+export const DAILY_MODES = { blank: '完整拼写', hint: '字母提示', choice: '中文选择' };
 export const isDaily = (s) => s.settings.learningPlan === 'daily';
+export const dailyMode = (s) => s.daily?.config?.mode ?? 'hint';
+export const dailyQuestionMode = (q) => (q?.stage === 'copy' ? 'hint' : (q?.mode ?? 'hint'));
 export function localDay(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
@@ -20,6 +31,7 @@ export function dailyConfig(value = {}) {
     target: Math.round(clamp(value.target, 150, 0, 1000)),
     budget: Math.round(clamp(value.budget, 150, 1, 2000)),
     ratio: clamp(value.ratio, 0.3, 0, 1),
+    mode: Object.hasOwn(DAILY_MODES, value.mode) ? value.mode : 'hint',
     newHint: clamp(value.newHint, 0.35, 0, 1),
     reviewHint: clamp(value.reviewHint, 0.2, 0, 1),
     group: typeof value.group === 'string' ? value.group : '',
@@ -47,7 +59,7 @@ export function ensureDaily(s, today = localDay()) {
   return d;
 }
 export function dailyPool(s, config = s.daily?.config || dailyConfig()) {
-  return pool({ ...s, settings: { ...s.settings, ...config, mode: 'hint' } });
+  return pool({ ...s, settings: { ...s.settings, ...config, mode: config.mode ?? 'hint' } });
 }
 export function dailyCandidates(s, today = localDay()) {
   const d = ensureDaily(s, today),
@@ -106,14 +118,12 @@ export function createDailyTask(s, today = localDay(), rng = Math.random) {
 export function dailySummary(s) {
   const t = s.daily?.task,
     items = t?.items || [],
-    valid = items.filter(
-      (i) => Object.hasOwn(s.entries, i.key) && !s.entries[i.key].recognitionOnly,
-    );
+    valid = items.filter((i) => Object.hasOwn(s.entries, i.key));
   const count = (kind, done = false) =>
     valid.filter((i) => i.kind === kind && (!done || i.done)).length;
   const taskKeys = new Set(items.filter((i) => !i.done && !i.deferred).map((i) => i.key));
   const backlog = s.daily
-    ? dailyPool(s, t?.config || s.daily.config).filter(
+    ? dailyPool(s, { ...(t?.config || s.daily.config), mode: dailyMode(s) }).filter(
         (e) => own(s.daily.records, e.key)?.due <= localDay() && !taskKeys.has(e.key),
       ).length
     : 0;
@@ -135,35 +145,29 @@ export const activeRound = (s) =>
     ? s.daily?.task || blankRound('daily')
     : s.rounds[s.settings.mode === 'choice' ? 'choice' : 'typing'];
 export function practiceState(s) {
-  return isDaily(s)
-    ? {
-        ...s,
-        settings: { ...s.settings, mode: 'hint' },
-        rounds: { ...s.rounds, typing: activeRound(s) },
-      }
-    : s;
+  if (!isDaily(s)) return s;
+  const round = activeRound(s);
+  const settings = { ...s.settings, mode: dailyQuestionMode(round.current) };
+  return { ...s, settings, rounds: { ...s.rounds, [category({ settings })]: round } };
 }
 export function nextDailyQuestion(s, today = localDay()) {
   const t = s.daily?.task || createDailyTask(s, today);
   if (!t) return null;
-  if (
-    t.current &&
-    !t.current.finished &&
-    s.entries[t.current.key] &&
-    !s.entries[t.current.key].recognitionOnly
-  )
-    return t.current;
+  if (t.current && !t.current.finished && Object.hasOwn(s.entries, t.current.key)) return t.current;
   t.current = null;
   while (t.queue.length) {
     const index = t.queue.shift(),
       item = t.items[index],
       e = s.entries[item?.key];
-    if (!e || e.recognitionOnly || item.done || item.deferred) continue;
+    if (!e || item.done || item.deferred) continue;
+    const mode = e.recognitionOnly ? 'choice' : dailyMode(s);
+    const stage = item.copied || mode === 'choice' ? 'recall' : 'copy';
     t.current = {
       key: item.key,
       itemIndex: index,
       kind: 'daily-' + item.kind,
-      stage: item.copied ? 'recall' : 'copy',
+      stage,
+      mode: stage === 'copy' ? 'hint' : mode,
       tries: 0,
       input: '',
       finished: false,
@@ -276,6 +280,7 @@ export function validDailyState(d) {
     Number.isInteger(c.target) &&
     c.target >= 0 &&
     c.target <= 1000 &&
+    (c.mode === undefined || Object.hasOwn(DAILY_MODES, c.mode)) &&
     ['ratio', 'newHint', 'reviewHint'].every(
       (k) => Number.isFinite(c[k]) && c[k] >= 0 && c[k] <= 1,
     ) &&
@@ -331,6 +336,7 @@ export function validDailyState(d) {
       (Number.isInteger(t.current.itemIndex) &&
         t.items[t.current.itemIndex]?.key === t.current.key &&
         ['copy', 'recall'].includes(t.current.stage) &&
+        (t.current.mode === undefined || Object.hasOwn(DAILY_MODES, t.current.mode)) &&
         typeof t.current.input === 'string'))
   );
 }

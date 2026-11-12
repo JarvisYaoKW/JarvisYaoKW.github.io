@@ -42,9 +42,7 @@ export function sheepStatus(s, key) {
 export function herdSummary(s) {
   const r = activeRound(s),
     entries = isDaily(s)
-      ? (s.daily?.task?.items || [])
-          .map((i) => s.entries[i.key])
-          .filter((e) => e && !e.recognitionOnly)
+      ? (s.daily?.task?.items || []).map((i) => s.entries[i.key]).filter(Boolean)
       : pool(s),
     keys = new Set(entries.map((e) => e.key));
   const caught = entries.filter((e) => sheepStatus(s, e.key) === 'caught');

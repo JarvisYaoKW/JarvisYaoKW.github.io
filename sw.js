@@ -1,4 +1,4 @@
-const CACHE = 'cijian-browser-v25-wordbook-labels';
+const CACHE = 'cijian-browser-v26-daily-modes';
 const SHELL = [
   '/',
   '/index.html',
