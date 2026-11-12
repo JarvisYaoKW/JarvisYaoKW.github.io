@@ -52,7 +52,7 @@ export function catalogHTML(state, catalog) {
   return `<div class="wordbook-heading"><h2>预置词库</h2><p>选择一本加入当前设备。相同英文会合并释义，已有成绩和进度保留。</p></div><div class="wordbook-list">${catalog.books
     .map((b) => {
       const installed = isBookInstalled(state, b);
-      return `<section class="wordbook-row"><div><h3>${esc(b.title)}</h3><p class="wordbook-meta">${b.count.toLocaleString('zh-CN')} 词 · ${esc(b.category)} · ${esc(b.licenseLabel || b.license || '来源见说明')}</p><p>${esc(b.description)}</p>${b.noticeUrl ? `<a class="wordbook-notice" href="${esc(b.noticeUrl)}" target="_blank" rel="noopener noreferrer">来源说明 ↗</a>` : ''}</div><button class="${installed ? 'secondary' : 'primary'}" data-action="install-book" data-book="${esc(b.id)}" ${installed ? 'disabled' : ''}>${installed ? '已添加' : '加入我的词库'}</button></section>`;
+      return `<section class="wordbook-row"><div><h3>${esc(b.title)}</h3><p class="wordbook-meta">${b.count.toLocaleString('zh-CN')} 词 · ${esc(b.category)} · ${esc(b.metaLabel || b.licenseLabel || b.license || '来源见说明')}</p><p>${esc(b.description)}</p>${b.noticeUrl ? `<a class="wordbook-notice" href="${esc(b.noticeUrl)}" target="_blank" rel="noopener noreferrer">来源说明 ↗</a>` : ''}</div><button class="${installed ? 'secondary' : 'primary'}" data-action="install-book" data-book="${esc(b.id)}" ${installed ? 'disabled' : ''}>${installed ? '已添加' : '加入我的词库'}</button></section>`;
     })
     .join(
       '',

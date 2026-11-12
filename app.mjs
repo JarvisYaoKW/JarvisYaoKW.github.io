@@ -29,6 +29,7 @@ import { apiRequest, audioSource, storageMode } from './web-services.mjs';
 import { lookupPronunciations, auxiliaryEntry, selectedReadings } from './aux-pronunciation.mjs';
 import { listSnapshots, getLocal, retainLocalDraft, saveLocalState } from './browser-storage.mjs';
 import { loadCatalog, loadBook, bookGroup, catalogHTML } from './wordbooks.mjs';
+import { updateWordbookLabels } from './wordbook-labels.mjs';
 import {
   practiceControls,
   practiceContext,
@@ -1070,6 +1071,7 @@ async function restoreFile(file) {
         if (saveError) throw Error(saveError);
         const revision = S.revision;
         state.aux = null;
+        updateWordbookLabels(state);
         ensureWallet(state);
         const r = await api('/api/state', {
           method: 'POST',
@@ -1215,6 +1217,7 @@ async function loadImport(file) {
     $('#confirm-import').onclick = () => {
       const group = $('#import-new-group').value.trim() || $('#import-group').value;
       const r = mergeEntries(S, rows, group);
+      updateWordbookLabels(S);
       persist(0);
       closeModal();
       render();
@@ -2525,6 +2528,7 @@ async function init() {
   try {
     const { state } = await api('/api/state');
     S = state || initialState();
+    if (updateWordbookLabels(S)) persist(0);
     S.aux = null;
     if (S.daily || isDaily(S)) ensureDaily(S);
     const hadWallet = !!S.pastureWallet;

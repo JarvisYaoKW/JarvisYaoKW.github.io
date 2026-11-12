@@ -1,4 +1,4 @@
-const CACHE = 'cijian-browser-v24-themed-wordbook';
+const CACHE = 'cijian-browser-v25-wordbook-labels';
 const SHELL = [
   '/',
   '/index.html',
@@ -31,6 +31,7 @@ const SHELL = [
   '/browser-storage.mjs',
   '/bin-parser.mjs',
   '/wordbooks.mjs',
+  '/wordbook-labels.mjs',
   '/wordbooks.css',
   '/icon.svg',
   '/manifest.webmanifest',
