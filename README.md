@@ -4,7 +4,7 @@
 
 「咩」既是羊的叫声，也有粤语“什么”的意思。词条的记忆进度化作羊群，答对就把对应词数带到记忆草场，进入加练时它们会逃回来。巨大羊、大羊、中羊、小羊、小小羊分别代表 500、100、50、10、1 词，两侧草场按当前词数自动组合。
 
-**[在线体验](https://jarvisyaokw.github.io/)** · [产品案例](docs/CASE_STUDY.md) · [技术设计](docs/ARCHITECTURE.md) · [开发与测试](docs/DEVELOPMENT.md)
+**[在线体验](https://mieci-976.pages.dev/)** · [产品案例](docs/CASE_STUDY.md) · [技术设计](docs/ARCHITECTURE.md) · [开发与测试](docs/DEVELOPMENT.md)
 
 ![自动检查](https://github.com/JarvisYaoKW/JarvisYaoKW.github.io/actions/workflows/checks.yml/badge.svg)
 
