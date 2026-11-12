@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { initialState, mergeEntries, nextQuestion, submit, previousQuestion } from '../engine.mjs';
 import {
   createDailyTask,
+  rebuildDailyTask,
   nextDailyQuestion,
   submitDaily,
   skipDaily,
@@ -56,7 +57,7 @@ test('daily selection is fixed, capped, prioritizes overdue mistakes, and seeds 
   assert.equal(s.daily.records.word0.learnedOn, null);
   assert.equal(s.daily.records.word0.legacy, true);
   const task = createDailyTask(s, DAY, () => 0.4);
-  assert.equal(task.items.length, 3);
+  assert.equal(task.items.length, 4);
   assert.equal(task.items[0].key, 'word1');
   assert.equal(task.items[0].kind, 'review');
   assert.equal(dailyCandidates(s, DAY).due.length, 2);
@@ -67,7 +68,7 @@ test('daily selection is fixed, capped, prioritizes overdue mistakes, and seeds 
   assert.equal(JSON.stringify(task), before);
   assert.equal(createDailyTask(s, addDays(DAY, 1)), task);
 });
-test('new copy then immediate recall: copying changes no score, coins, dates or sheep', () => {
+test('new copy then spaced recall: copying changes no score, coins, dates or sheep', () => {
   const s = state(),
     before = JSON.stringify(s.rounds);
   createDailyTask(s, DAY);
@@ -80,6 +81,8 @@ test('new copy then immediate recall: copying changes no score, coins, dates or 
   assert.equal(s.daily.records[key], undefined);
   assert.equal(dailySummary(s).newDone, 0);
   assert.equal(herdSummary(s).caught.length, 0);
+  assert.notEqual(advance(s).key, key);
+  answer(s);
   assert.equal(advance(s).key, key);
   assert.equal(s.daily.task.current.stage, 'recall');
   answer(s);
@@ -154,7 +157,7 @@ test('completed daily task cannot regenerate today; a later day archives and dra
   assert.notEqual(s.daily.task, task);
   assert.equal(s.daily.archive.length, 1);
   assert.equal(s.daily.archive[0].newDone, 2);
-  assert.equal(s.daily.task.items.filter((i) => i.kind === 'review').length, 1);
+  assert.equal(s.daily.task.items.filter((i) => i.kind === 'review').length, 2);
   assert.equal(s.daily.task.items.filter((i) => i.kind === 'new').length, 2);
 });
 test('skipping defers without counting mastery or earning coins, and due reviews remain eligible tomorrow', () => {
@@ -224,7 +227,7 @@ test('filters, recognition-only words, deleted entries, and hostile property nam
   s.entries.word0.recognitionOnly = true;
   s.daily.config.group = '不存在';
   createDailyTask(s, DAY);
-  assert.equal(s.daily.task.items.length, 0);
+  assert.equal(s.daily.task, null);
   const a = state(1);
   createDailyTask(a, DAY);
   delete a.entries.word0;
@@ -248,7 +251,7 @@ test('daily UI exposes controls, honest counts, empty/complete states and no-cop
   assert.match(dailyFeedback({ stage: 'copy', finished: true, outcome: 'correct' }), /不计分/);
 });
 test('configuration clamps limits and calendar days are timezone/DST independent', () => {
-  assert.equal(dailyConfig({ target: -3, newHint: 5, ratio: 99 }).target, 1);
+  assert.equal(dailyConfig({ target: -3, newHint: 5, ratio: 99 }).target, 0);
   assert.equal(dailyConfig({ target: Infinity }).target, 150);
   assert.equal(dailyConfig({ newHint: 5 }).newHint, 1);
   assert.equal(addDays('2026-03-08', 1), '2026-03-09');
@@ -261,4 +264,41 @@ test('invalid restored daily queues are rejected before overwriting stored progr
   s.daily.task.queue.push(99999);
   assert.equal(validLocalState(s), false);
   assert.equal(validDailyState({ version: 1 }), false);
+});
+
+test('budget prioritizes due words, permits pure review and empty scope never locks a day', () => {
+  const s = state(5);
+  s.daily.config = dailyConfig({ target: 3, budget: 2 });
+  s.entries.word0.stats.typing.correct = 1;
+  s.entries.word1.stats.typing.correct = 1;
+  const t = createDailyTask(s, DAY);
+  assert.equal(t.items.length, 2);
+  assert.ok(t.items.every((x) => x.kind === 'review'));
+  const a = state(2);
+  a.daily.config = dailyConfig({ scope: 'favorite' });
+  assert.equal(createDailyTask(a, DAY), null);
+  a.daily.config.scope = 'all';
+  assert.equal(createDailyTask(a, DAY).items.length, 2);
+  const b = state(2);
+  b.entries.word0.stats.typing.correct = 1;
+  b.daily.config = dailyConfig({ target: 0, budget: 20 });
+  assert.equal(createDailyTask(b, DAY).items.length, 1);
+  assert.equal(b.daily.task.items[0].kind, 'review');
+});
+
+test('adjusting an active task retains earned progress and budget across serialization', () => {
+  const s = state(4);
+  createDailyTask(s, DAY);
+  nextDailyQuestion(s, DAY);
+  answer(s);
+  advance(s);
+  answer(s);
+  const coins = s.pastureWallet.balance;
+  const records = JSON.stringify(s.daily.records);
+  s.daily.config = dailyConfig({ target: 0, budget: 5 });
+  rebuildDailyTask(s, DAY);
+  assert.equal(s.pastureWallet.balance, coins);
+  assert.equal(JSON.stringify(s.daily.records), records);
+  assert.equal(s.daily.task, null);
+  assert.equal(validLocalState(JSON.parse(JSON.stringify(s))), true);
 });

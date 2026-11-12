@@ -17,7 +17,8 @@ const clamp = (v, fallback, min, max) =>
   Number.isFinite(Number(v)) ? Math.min(max, Math.max(min, Number(v))) : fallback;
 export function dailyConfig(value = {}) {
   return {
-    target: Math.round(clamp(value.target, 150, 1, 1000)),
+    target: Math.round(clamp(value.target, 150, 0, 1000)),
+    budget: Math.round(clamp(value.budget, 150, 1, 2000)),
     ratio: clamp(value.ratio, 0.3, 0, 1),
     newHint: clamp(value.newHint, 0.35, 0, 1),
     reviewHint: clamp(value.reviewHint, 0.2, 0, 1),
@@ -70,7 +71,7 @@ export function dailyCandidates(s, today = localDay()) {
 export function createDailyTask(s, today = localDay(), rng = Math.random) {
   const d = ensureDaily(s, today),
     old = d.task;
-  if (old && (!dailySummary(s).complete || old.day === today)) return old;
+  if (old?.items.length && (!dailySummary(s).complete || old.day === today)) return old;
   const { fresh, due } = dailyCandidates(s, today),
     config = dailyConfig(d.config);
   // Fisher-Yates once, then persist this exact queue across reloads and midnight.
@@ -83,13 +84,17 @@ export function createDailyTask(s, today = localDay(), rng = Math.random) {
     d.archive = d.archive.slice(-365);
   }
   const items = [
-    ...due
-      .slice(0, Math.floor(config.target * config.ratio))
-      .map((e) => ({ key: e.key, kind: 'review', copied: true })),
-    ...fresh.slice(0, config.target).map((e) => ({ key: e.key, kind: 'new', copied: false })),
+    ...due.slice(0, config.budget).map((e) => ({ key: e.key, kind: 'review', copied: true })),
+    ...fresh
+      .slice(0, Math.min(config.target, Math.max(0, config.budget - due.length)))
+      .map((e) => ({ key: e.key, kind: 'new', copied: false })),
   ];
+  if (!items.length) {
+    d.task = null;
+    return null;
+  }
   d.task = {
-    ...blankRound('daily:' + today),
+    ...blankRound('daily:' + today + ':' + d.archive.length),
     day: today,
     config,
     items,
@@ -106,7 +111,7 @@ export function dailySummary(s) {
     );
   const count = (kind, done = false) =>
     valid.filter((i) => i.kind === kind && (!done || i.done)).length;
-  const taskKeys = new Set(items.map((i) => i.key));
+  const taskKeys = new Set(items.filter((i) => !i.done && !i.deferred).map((i) => i.key));
   const backlog = s.daily
     ? dailyPool(s, t?.config || s.daily.config).filter(
         (e) => own(s.daily.records, e.key)?.due <= localDay() && !taskKeys.has(e.key),
@@ -140,6 +145,7 @@ export function practiceState(s) {
 }
 export function nextDailyQuestion(s, today = localDay()) {
   const t = s.daily?.task || createDailyTask(s, today);
+  if (!t) return null;
   if (
     t.current &&
     !t.current.finished &&
@@ -230,7 +236,8 @@ export function submitDaily(s, input, today = localDay()) {
     }
   }
   if (!item.done) {
-    if (q.stage === 'copy' && result === 'correct') t.queue.unshift(q.itemIndex);
+    if (q.stage === 'copy' && result === 'correct')
+      t.queue.splice(Math.min(3, t.queue.length), 0, q.itemIndex);
     else t.queue.push(q.itemIndex);
   }
   if (dailySummary(s).complete) t.completedOn ||= today;
@@ -267,7 +274,7 @@ export function validDailyState(d) {
   const config = (c) =>
     object(c) &&
     Number.isInteger(c.target) &&
-    c.target >= 1 &&
+    c.target >= 0 &&
     c.target <= 1000 &&
     ['ratio', 'newHint', 'reviewHint'].every(
       (k) => Number.isFinite(c[k]) && c[k] >= 0 && c[k] <= 1,
@@ -298,7 +305,7 @@ export function validDailyState(d) {
   return (
     object(t) &&
     day(t.day) &&
-    t.number === 'daily:' + t.day &&
+    String(t.number).startsWith('daily:' + t.day) &&
     config(t.config) &&
     Array.isArray(t.items) &&
     t.items.length <= 2000 &&
@@ -326,4 +333,13 @@ export function validDailyState(d) {
         ['copy', 'recall'].includes(t.current.stage) &&
         typeof t.current.input === 'string'))
   );
+}
+
+export function rebuildDailyTask(s, today = localDay()) {
+  const d = ensureDaily(s, today);
+  if (d.task)
+    d.archive.push({ day: d.task.day, completedOn: null, adjustedOn: today, ...dailySummary(s) });
+  d.archive = d.archive.slice(-365);
+  d.task = null;
+  return createDailyTask(s, today);
 }

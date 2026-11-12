@@ -12,6 +12,7 @@ import {
   dailySummary,
   observeNormalAnswer,
   dailyCandidates,
+  rebuildDailyTask,
 } from './daily-learning.mjs';
 import { dailyControls, dailyMetrics, dailyIdle, dailyFeedback } from './daily-view.mjs';
 import { matchesVocabulary, bindVocabularySearch } from './vocabulary-search.mjs';
@@ -26,7 +27,7 @@ import {
 } from './english-definitions.mjs';
 import { apiRequest, audioSource, storageMode } from './web-services.mjs';
 import { lookupPronunciations, auxiliaryEntry, selectedReadings } from './aux-pronunciation.mjs';
-import { retainLocalDraft, saveLocalState } from './browser-storage.mjs';
+import { listSnapshots, getLocal, retainLocalDraft, saveLocalState } from './browser-storage.mjs';
 import { loadCatalog, loadBook, bookGroup, catalogHTML } from './wordbooks.mjs';
 import {
   practiceControls,
@@ -142,7 +143,7 @@ function reviewNextLabel() {
     current()?.stage === 'copy' &&
     current()?.outcome === 'correct'
   )
-    return '回忆拼写';
+    return '继续学习';
   return reviewedQuestion() && review.index >= reviewLimit() - 1 ? '回到当前题' : '下一题';
 }
 const entry = () => S.entries[current()?.key];
@@ -183,7 +184,7 @@ function saveStatus() {
   const el = $('#save-status');
   if (!el) return;
   const pending = saving || saved < dirty,
-    label = saveError ? '保存失败 · 点击重试' : '自动保存到本机';
+    label = saveError ? '保存失败 · 点击重试' : pending ? '正在保存…' : '已保存到本机';
   if (el.textContent !== label) el.textContent = label;
   el.classList.toggle('save-error', !!saveError);
   el.setAttribute('aria-busy', String(pending));
@@ -275,7 +276,7 @@ function header() {
     )
     .join(
       '',
-    )}</nav><div class="header-right"><button id="save-status" class="save-status" data-action="save">已保存到本机</button><button class="icon-btn" title="切换浅色 / 深色" aria-label="切换主题" data-action="theme">${S.settings.theme === 'dark' ? icons.sun : icons.moon}</button><button class="icon-btn" title="设置" aria-label="设置" data-action="settings"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="m9 3-.6 2.2-1.7 1L4.5 5.8 2 10l1.6 1.7v1.8L2 15.2l2.5 4.2 2.2-.4 1.7 1L9 22h5l.6-2 1.7-1 2.2.4 2.5-4.2-1.6-1.7v-1.8L21 10l-2.5-4.2-2.2.4-1.7-1L14 3Z"/><circle cx="11.5" cy="12.5" r="3.4"/></svg></button></div></header>`;
+    )}</nav><div class="header-right"><button id="save-status" class="save-status" data-action="save">已保存到本机</button><button class="icon-btn" title="切换浅色 / 深色" aria-label="切换主题" data-action="theme">${S.settings.theme === 'dark' ? icons.sun : icons.moon}</button><button class="text-btn" data-action="help">帮助</button><button class="icon-btn" title="设置" aria-label="设置" data-action="settings"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="m9 3-.6 2.2-1.7 1L4.5 5.8 2 10l1.6 1.7v1.8L2 15.2l2.5 4.2 2.2-.4 1.7 1L9 22h5l.6-2 1.7-1 2.2.4 2.5-4.2-1.6-1.7v-1.8L21 10l-2.5-4.2-2.2.4-1.7-1L14 3Z"/><circle cx="11.5" cy="12.5" r="3.4"/></svg></button></div></header>`;
 }
 function groupOptions(value, withAll = true) {
   return (
@@ -499,7 +500,7 @@ function sourceLinks(s) {
   return links
     .map(
       (l) =>
-        `<a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.label)} ↗</a>`,
+        `<a href="${esc(/^https?:\/\//i.test(l.url || '') ? l.url : '#')}" target="_blank" rel="noopener noreferrer">${esc(l.label)} ↗</a>`,
     )
     .join(' · ');
 }
@@ -724,9 +725,13 @@ function bindPracticeControls(root = document) {
           c = d.config;
         preview.textContent =
           '可安排新词 ' +
-          Math.min(c.target, candidates.fresh.length) +
+          Math.min(
+            c.target,
+            candidates.fresh.length,
+            Math.max(0, c.budget - candidates.due.length),
+          ) +
           ' 词、到期复习 ' +
-          Math.min(Math.floor(c.target * c.ratio), candidates.due.length) +
+          Math.min(c.budget, candidates.due.length) +
           ' 词。';
       }
       persist(0);
@@ -1331,7 +1336,7 @@ function groupModal(batch = false) {
 }
 function settingsModal() {
   showModal(
-    `<h2>设置</h2><div class="settings-grid"><label class="setting-row"><span>显示英文释义<small>练习题、答案、原词照打及词形词族练习统一开关</small></span><input id="setting-english" type="checkbox" ${S.settings.englishDefinitions !== false ? 'checked' : ''}></label><label class="setting-row"><span>答案出现自动发音<small>默认美音；只在答案展示后播放</small></span><input id="setting-auto" type="checkbox" ${S.settings.autoAudio ? 'checked' : ''}></label><label class="setting-row"><span>发音口音<small>录音不足时使用对应口音的系统合成朗读</small></span><select id="setting-accent"><option value="us" ${S.settings.accent === 'us' ? 'selected' : ''}>美音 en-US</option><option value="uk" ${S.settings.accent === 'uk' ? 'selected' : ''}>英音 en-GB</option></select></label><label class="setting-row"><span>句子严格检查大小写<small>单词和短语始终忽略大小写及首尾空格</small></span><input id="setting-case" type="checkbox" ${S.settings.strictCase ? 'checked' : ''}></label><label class="setting-row"><span>句子严格检查标点</span><input id="setting-punctuation" type="checkbox" ${S.settings.strictPunctuation ? 'checked' : ''}></label></div><p class="muted">速度按 5 个字符折算为 1 个标准词。有效打字时间按连续输入计算，超过 5 秒未操作暂停计时；阅读答案、听发音、窗口失焦及拓展练习不计入正式速度。</p><div class="modal-actions"><button class="primary" id="save-settings">保存设置</button><button class="secondary" data-action="backup">导出完整备份</button><button class="text-btn" data-action="restore-picker">恢复备份</button></div><p class="muted">答案展示后：R 照打，E 派生词族，Shift＋E 含动词变化，F 收藏，P 发音。词族练习中 Ctrl＋Enter 加入主词库。</p>`,
+    `<h2>设置</h2><div class="modal-actions"><button class="secondary" data-action="help">使用帮助与反馈</button><button class="secondary" data-action="snapshots">本机历史快照</button></div><div class="settings-grid"><label class="setting-row"><span>显示英文释义<small>练习题、答案、原词照打及词形词族练习统一开关</small></span><input id="setting-english" type="checkbox" ${S.settings.englishDefinitions !== false ? 'checked' : ''}></label><label class="setting-row"><span>答案出现自动发音<small>默认美音；只在答案展示后播放</small></span><input id="setting-auto" type="checkbox" ${S.settings.autoAudio ? 'checked' : ''}></label><label class="setting-row"><span>发音口音<small>录音不足时使用对应口音的系统合成朗读</small></span><select id="setting-accent"><option value="us" ${S.settings.accent === 'us' ? 'selected' : ''}>美音 en-US</option><option value="uk" ${S.settings.accent === 'uk' ? 'selected' : ''}>英音 en-GB</option></select></label><label class="setting-row"><span>句子严格检查大小写<small>单词和短语始终忽略大小写及首尾空格</small></span><input id="setting-case" type="checkbox" ${S.settings.strictCase ? 'checked' : ''}></label><label class="setting-row"><span>句子严格检查标点</span><input id="setting-punctuation" type="checkbox" ${S.settings.strictPunctuation ? 'checked' : ''}></label></div><p class="muted">速度按 5 个字符折算为 1 个标准词。有效打字时间按连续输入计算，超过 5 秒未操作暂停计时；阅读答案、听发音、窗口失焦及拓展练习不计入正式速度。</p><div class="modal-actions"><button class="primary" id="save-settings">保存设置</button><button class="secondary" data-action="backup">导出完整备份</button><button class="text-btn" data-action="restore-picker">恢复备份</button></div><p class="muted">答案展示后：R 照打，E 派生词族，Shift＋E 含动词变化，F 收藏，P 发音。词族练习中 Ctrl＋Enter 加入主词库。</p>`,
   );
   $('#save-settings').onclick = () => {
     S.settings.englishDefinitions = $('#setting-english').checked;
@@ -2182,6 +2187,46 @@ function exchangeSheepSkin(id) {
   toast('已兑换 ' + result.skin.id + ' ' + result.skin.name + '。');
 }
 const actions = {
+  help: () =>
+    showModal(
+      '<h2>使用帮助与反馈</h2><p>1. 在练习设置选择词库和学习计划。每日学习按总量上限优先安排到期复习，剩余名额用于新词；新词目标设为 0 即只复习。</p><p>2. 新词先照打，隔几个词再回忆。Enter 检查，再按 Enter 继续；两次都错计一次错误。Shift Enter 暂缓，Page Up 回看上一题。</p><p>3. 答案后 R 照打、E 词族、F 收藏、P 发音；词族中 Ctrl Enter 加入主词库。</p><p>学习记录保存在当前浏览器和网址。换设备或清理浏览器前，请在设置导出完整备份。缓存过的资料可离线使用，部分词典与发音需要联网，查询词可能发送给相应服务。</p><p>请定期导出备份。本机快照也会随站点数据被清除，不能代替导出文件。</p><a href="https://github.com/JarvisYaoKW/JarvisYaoKW.github.io/issues/new" target="_blank" rel="noopener noreferrer">反馈问题 ↗</a><p>请提供设备、浏览器、复现步骤或错误词条，避免公开个人完整备份。</p>',
+    ),
+  snapshots: async () => {
+    const rows = await listSnapshots();
+    showModal(
+      '<h2>本机历史快照</h2><p>每天首次保存及恢复备份前保留快照，最多保留 10 份。恢复前仍会备份当前数据。</p>' +
+        (rows.length
+          ? rows
+              .map(
+                (x) =>
+                  '<p>' +
+                  esc(new Date(x.at).toLocaleString()) +
+                  ' · ' +
+                  x.count +
+                  ' 词 <button class="secondary" data-action="snapshot-restore" data-key="' +
+                  esc(x.key) +
+                  '">恢复此快照</button></p>',
+              )
+              .join('')
+          : '<p>暂时没有快照。请先导出完整备份。</p>'),
+    );
+  },
+  'snapshot-restore': async (el) => {
+    const state = await getLocal(el.dataset.key);
+    if (state) restoreFile(new Blob([JSON.stringify({ state, kind: 'ielts-studio-backup' })]));
+  },
+  'daily-adjust': () =>
+    showModal(
+      '<h2>重新安排剩余任务？</h2><p>按照左侧设置重新选词。已完成的成绩、金币和复习日期保留，未完成词回到待学或待复习范围。正在输入的内容会清空。</p><button class="primary" data-action="daily-rebuild">确认调整</button><button class="secondary" data-action="close-modal">取消</button>',
+    ),
+  'daily-rebuild': () => {
+    closeModal();
+    review = null;
+    rebuildDailyTask(S);
+    persist(0);
+    start();
+  },
+
   'learning-plan': (el) => {
     review = null;
     stopAudio();

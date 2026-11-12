@@ -94,7 +94,33 @@ export async function saveLocalState(state, expectedRevision, { restore = false 
         return;
       }
       revision = (current?.revision || 0) + 1;
-      if (restore && current) store.put(current, 'backup:' + Date.now());
+      if (current) {
+        const dailyKey = 'snapshot:' + new Date().toLocaleDateString('en-CA');
+        const check = store.get(dailyKey);
+        check.onsuccess = () => {
+          if (!check.result) store.put({ ...current, snapshotAt: Date.now() }, dailyKey);
+        };
+        if (restore) store.put({ ...current, snapshotAt: Date.now() }, 'backup:' + Date.now());
+        const keys = store.getAllKeys();
+        keys.onsuccess = () => {
+          const records = keys.result.filter(
+            (k) => String(k).startsWith('backup:') || String(k).startsWith('snapshot:'),
+          );
+          const reads = records.map(
+            (k) =>
+              new Promise((resolve) => {
+                const r = store.get(k);
+                r.onsuccess = () => resolve({ key: k, at: r.result?.snapshotAt || 0 });
+              }),
+          );
+          Promise.all(reads).then((rows) =>
+            rows
+              .sort((a, b) => b.at - a.at)
+              .slice(restore ? 8 : 9)
+              .forEach((x) => store.delete(x.key)),
+          );
+        };
+      }
       store.put({ ...state, revision }, 'state');
     };
     tx.oncomplete = () => resolve({ revision });
@@ -162,4 +188,27 @@ export function recoverQuestionDraft(state) {
     }
   } catch {}
   return state;
+}
+
+export async function listSnapshots() {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('kv', 'readonly'),
+      store = tx.objectStore('kv'),
+      r = store.openCursor(),
+      rows = [];
+    r.onsuccess = () => {
+      const c = r.result;
+      if (!c) return;
+      if (String(c.key).startsWith('backup:') || String(c.key).startsWith('snapshot:'))
+        rows.push({
+          key: c.key,
+          at: c.value.snapshotAt || Number(String(c.key).split(':')[1]) || 0,
+          count: Object.keys(c.value.entries || {}).length,
+        });
+      c.continue();
+    };
+    tx.oncomplete = () => resolve(rows.sort((a, b) => b.at - a.at));
+    tx.onerror = () => reject(tx.error);
+  });
 }

@@ -1,4 +1,4 @@
-const CACHE = 'cijian-browser-v21-daily-learning';
+const CACHE = 'cijian-browser-v22-release-hardening';
 const SHELL = [
   '/',
   '/index.html',
