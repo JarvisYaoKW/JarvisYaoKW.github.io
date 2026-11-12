@@ -1,8 +1,9 @@
-const CACHE = 'cijian-browser-v19-colorway-skins';
+const CACHE = 'cijian-browser-v20-chinese-search';
 const SHELL = [
   '/',
   '/index.html',
   '/app.mjs',
+  '/vocabulary-search.mjs',
   '/shortcuts.mjs',
   '/navigation.mjs',
   '/aux-pronunciation.mjs',

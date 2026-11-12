@@ -1,3 +1,4 @@
+import { matchesVocabulary, bindVocabularySearch } from './vocabulary-search.mjs';
 import { practiceShortcut } from './shortcuts.mjs';
 import { ensureWallet, selectSkin, redeemSkin } from './pasture-economy.mjs';
 import { syncNavigationIndicator } from './navigation.mjs';
@@ -73,6 +74,7 @@ let S,
     ? location.hash.slice(1)
     : 'practice',
   search = '',
+  libraryGroup = '',
   sort = 'alpha',
   selected = new Set(),
   toastTimer,
@@ -568,11 +570,11 @@ function library() {
   let list = Object.values(S.entries).filter(
     (e) =>
       (view === 'favorite' ? e.favorite : view === 'wrong' ? statsOf(e, cat).wrong > 0 : true) &&
-      (!S.settings.group ||
-        (S.settings.group === '__ungrouped'
+      (!libraryGroup ||
+        (libraryGroup === '__ungrouped'
           ? e.groups.length === 0
-          : e.groups.includes(S.settings.group))) &&
-      norm(e.english + ' ' + e.meanings.join(' ')).includes(norm(search)),
+          : e.groups.includes(libraryGroup))) &&
+      matchesVocabulary(e, search),
   );
   list.sort(
     sort === 'wrong'
@@ -581,8 +583,22 @@ function library() {
         ? (a, b) => (b.favoritedAt || b.createdAt) - (a.favoritedAt || a.createdAt)
         : (a, b) => a.english.localeCompare(b.english, 'en'),
   );
+  const outsideGroup = libraryGroup
+    ? Object.values(S.entries).filter(
+        (e) =>
+          (view === 'favorite'
+            ? e.favorite
+            : view === 'wrong'
+              ? statsOf(e, cat).wrong > 0
+              : true) &&
+          matchesVocabulary(e, search) &&
+          !(libraryGroup === '__ungrouped'
+            ? e.groups.length === 0
+            : e.groups.includes(libraryGroup)),
+      ).length
+    : 0;
   const title = view === 'favorite' ? '收藏' : view === 'wrong' ? '常错本' : '词库';
-  return `<main class="main library-main"><div class="page-title"><h1>${title}</h1><p>${view === 'favorite' ? '收藏的内容会自动加入加练，也可以在这里集中练习。' : view === 'wrong' ? '仅在一道题的两次机会都答错时记一次错误。历史记录会保留。' : '同一个英文词条合并保存，多种中文释义持续积累。'}</p></div><div class="list-controls"><input id="search" aria-label="搜索词条" placeholder="搜索英文或中文释义…" value="${esc(search)}"><select id="list-group" aria-label="按分组筛选">${groupOptions(S.settings.group)}</select><select id="list-sort" aria-label="排序"><option value="alpha" ${sort === 'alpha' ? 'selected' : ''}>首字母 A–Z</option><option value="wrong" ${sort === 'wrong' ? 'selected' : ''}>错误次数 ↓</option><option value="recent" ${sort === 'recent' ? 'selected' : ''}>最近收藏 / 添加</option></select><button class="secondary" data-action="add">＋ 新建词条</button><button class="secondary" data-action="books">预置词库</button><button class="primary" data-action="import">导入词库</button></div><div class="list-subbar"><span>${list.length} 条内容 · 已选 ${selected.size} 条</span><div><button class="text-btn" data-action="new-group">新建分组</button><button class="text-btn" data-action="batch-group">批量分组</button>${view !== 'library' ? `<button class="text-btn" data-action="practice-list">练习这个列表 →</button>` : ''}</div></div><div class="table-wrap"><table><thead><tr><th><input type="checkbox" id="select-all" aria-label="全选当前列表" ${list.length && list.every((e) => selected.has(e.key)) ? 'checked' : ''}></th><th>英文 / 分组</th><th>中文释义</th><th>正确 / 错误</th><th>收藏</th><th></th></tr></thead><tbody>${
+  return `<main class="main library-main"><div class="page-title"><h1>${title}</h1><p>${view === 'favorite' ? '收藏的内容会自动加入加练，也可以在这里集中练习。' : view === 'wrong' ? '仅在一道题的两次机会都答错时记一次错误。历史记录会保留。' : '同一个英文词条合并保存，多种中文释义持续积累。'}</p></div><div class="list-controls"><input id="search" aria-label="搜索词条" placeholder="搜索本机词库：英文 / 中文释义…" value="${esc(search)}"><select id="list-group" aria-label="按分组筛选">${groupOptions(libraryGroup)}</select><select id="list-sort" aria-label="排序"><option value="alpha" ${sort === 'alpha' ? 'selected' : ''}>首字母 A–Z</option><option value="wrong" ${sort === 'wrong' ? 'selected' : ''}>错误次数 ↓</option><option value="recent" ${sort === 'recent' ? 'selected' : ''}>最近收藏 / 添加</option></select><button class="secondary" data-action="add">＋ 新建词条</button><button class="secondary" data-action="books">预置词库</button><button class="primary" data-action="import">导入词库</button></div><div class="list-subbar"><span>${list.length} 条内容 · 已选 ${selected.size} 条 · ${libraryGroup ? '当前分组' : '本机全部分组'}${outsideGroup && search.trim() ? ` · 其他分组还有 ${outsideGroup} 条匹配 <button class="text-btn" data-action="search-all-groups">查看全部分组</button>` : ''}</span><div><button class="text-btn" data-action="new-group">新建分组</button><button class="text-btn" data-action="batch-group">批量分组</button>${view !== 'library' ? `<button class="text-btn" data-action="practice-list">练习这个列表 →</button>` : ''}</div></div><div class="table-wrap"><table><thead><tr><th><input type="checkbox" id="select-all" aria-label="全选当前列表" ${list.length && list.every((e) => selected.has(e.key)) ? 'checked' : ''}></th><th>英文 / 分组</th><th>中文释义</th><th>正确 / 错误</th><th>收藏</th><th></th></tr></thead><tbody>${
     list.length
       ? list
           .slice(0, 500)
@@ -591,7 +607,7 @@ function library() {
               `<tr><td><input type="checkbox" data-select="${esc(e.key)}" aria-label="选择 ${esc(e.english)}" ${selected.has(e.key) ? 'checked' : ''}></td><td><button class="word-link" data-action="detail" data-key="${esc(e.key)}">${esc(e.english)}</button><small>${esc(e.groups.join(' / ') || '未分组')}${e.recognitionOnly ? ' · 只练认义' : ''}</small></td><td class="table-meaning">${e.meanings.map((m) => esc(m)).join('<br>')}</td><td class="numbers"><span>${statsOf(e, cat).correct}</span> / <span class="red">${statsOf(e, cat).wrong}</span></td><td>${favoriteButton(e)}</td><td><button class="text-btn" data-action="edit" data-key="${esc(e.key)}">编辑</button></td></tr>`,
           )
           .join('')
-      : '<tr><td colspan="6" class="empty">这里还没有内容。你可以先导入词库，或换一个分组。</td></tr>'
+      : `<tr><td colspan="6" class="empty">${search.trim() ? '未找到匹配词条。可尝试释义中的关键词，或在预置词库中加入相应词本后再搜索。' : '这里还没有内容。你可以先导入词库，或换一个分组。'}${libraryGroup ? '<button class="text-btn" data-action="search-all-groups">查看全部分组</button>' : ''}</td></tr>`
   }</tbody></table></div>${list.length > 500 ? '<p class="muted">当前显示前 500 条，请使用搜索缩小范围。</p>' : ''}<div class="list-foot"><button class="secondary" data-action="backup">导出完整备份</button><button class="text-btn" data-action="export-csv">导出词库 CSV</button><span>当前成绩类别：${cat === 'typing' ? '拼写' : '选择题'} · <button class="text-btn" data-action="toggle-category">切换查看</button></span></div></main>`;
 }
 function renderPageShell(content) {
@@ -757,17 +773,17 @@ function bind() {
     lastTick = 0;
   });
   $('#list-group')?.addEventListener('change', (ev) => {
-    S.settings.group = ev.target.value;
-    persist();
+    libraryGroup = ev.target.value;
     render();
   });
-  $('#search')?.addEventListener('input', (ev) => {
-    search = ev.target.value;
-    const pos = ev.target.selectionStart;
-    render();
-    $('#search')?.focus();
-    $('#search')?.setSelectionRange(pos, pos);
-  });
+  if ($('#search'))
+    bindVocabularySearch($('#search'), (value, start, end) => {
+      if (search === value) return;
+      search = value;
+      render();
+      $('#search')?.focus();
+      $('#search')?.setSelectionRange(start, end);
+    });
   $('#list-sort')?.addEventListener('change', (ev) => {
     sort = ev.target.value;
     render();
@@ -2124,6 +2140,10 @@ const actions = {
     showModal(
       '<h2>草场说明</h2><div class="herd-help"><p>待记草场显示还未带回的词，记忆草场显示本轮已答对的词。巨大羊代表 500 词，大羊 100 词，中羊 50 词，小羊 10 词，小小羊 1 词，两侧均按词数自动组合。正常练习答对后，对应词数移到右边；两次机会都错，留在左边。第一次答错但第二次改对，也会带回来。</p><p>已答对的词再次进入正常加练时，会从右边逃回左边。再次答对，再带回来。加练的次数与间隔完全沿用正常练习。</p><p>跳过的词本轮留在左边，不计错误。反复照打和词形拓展不改变正式练习进度。</p><p>这里与练习页共用模式、分组、范围和轮次。完整拼写与字母提示共用拼写进度；认义选择显示其正常进度。只有练习页开始新一轮，羊群才随之重置。</p><p>不同体型的羊自由走动，经过鼠标或获得键盘焦点时会停下来。点击羊可以查看代表的词数；代表 1 词的小小羊保留单词状态查询。</p></div>',
     ),
+  'search-all-groups': () => {
+    libraryGroup = '';
+    render();
+  },
   nav: (el) => navigate(el.dataset.view),
   theme: () => {
     S.settings.theme = S.settings.theme === 'dark' ? 'light' : 'dark';
@@ -2173,6 +2193,7 @@ const actions = {
     render();
   },
   'practice-list': () => {
+    S.settings.group = libraryGroup;
     S.settings.scope = view === 'favorite' ? 'favorite' : 'wrong';
     persist();
     navigate('practice');
