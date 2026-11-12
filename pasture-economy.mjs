@@ -42,6 +42,11 @@ export function validWallet(w) {
     new Set(w.owned).size === w.owned.length &&
     SHEEP_SKINS.filter((s) => s.starter).every((s) => w.owned.includes(s.id)) &&
     (w.selected === 'mixed' || w.owned.includes(w.selected)) &&
+    (w.selectedIds == null ||
+      (Array.isArray(w.selectedIds) &&
+        w.selectedIds.length > 0 &&
+        new Set(w.selectedIds).size === w.selectedIds.length &&
+        w.selectedIds.every((id) => w.owned.includes(id)))) &&
     Array.isArray(w.recent) &&
     w.recent.length <= 100 &&
     w.recent.every(
@@ -101,8 +106,25 @@ export function rewardCatch(s, cat, r, q) {
 export function selectedSkin(s, seed = 0, catalog = SHEEP_SKINS) {
   const w = walletSummary(s),
     owned = catalog.filter((skin) => w.owned.includes(skin.id) && skin.available !== false),
-    chosen = w.selected === 'mixed' ? null : owned.find((skin) => skin.id === w.selected);
-  return chosen || owned[Math.abs(seed) % owned.length] || SHEEP_SKINS[0];
+    candidates = owned.filter((skin) => skinSelection(s).includes(skin.id));
+  return candidates[Math.abs(seed) % candidates.length] || owned[0] || SHEEP_SKINS[0];
+}
+export function skinSelection(s) {
+  const w = walletSummary(s);
+  return w.selectedIds || (w.selected === 'mixed' ? w.owned : [w.selected]);
+}
+export function toggleSkin(s, id, catalog = SHEEP_SKINS) {
+  const w = ensureWallet(s);
+  if (!w.owned.includes(id) || !catalog.some((x) => x.id === id && x.available !== false))
+    return false;
+  const ids = [...skinSelection(s)];
+  if (ids.includes(id)) {
+    if (ids.length === 1) return false;
+    ids.splice(ids.indexOf(id), 1);
+  } else ids.push(id);
+  w.selectedIds = ids;
+  w.selected = ids[0];
+  return true;
 }
 export function selectSkin(s, id, catalog = SHEEP_SKINS) {
   const w = ensureWallet(s);
@@ -112,6 +134,7 @@ export function selectSkin(s, id, catalog = SHEEP_SKINS) {
   )
     return false;
   w.selected = id;
+  delete w.selectedIds;
   return true;
 }
 export function redeemSkin(s, id, catalog = SHEEP_SKINS) {

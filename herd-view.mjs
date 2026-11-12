@@ -1,6 +1,6 @@
 import { activeRound, isDaily, dailySummary } from './daily-learning.mjs';
 import { renderSkinSheep, bindSheepMotion } from './sheep-art.mjs';
-import { SHEEP_SKINS, walletSummary, selectedSkin } from './pasture-economy.mjs';
+import { SHEEP_SKINS, walletSummary, selectedSkin, skinSelection } from './pasture-economy.mjs';
 import { category } from './engine.mjs';
 import { herdSummary, sheepStatus, sheepBundles, SHEEP_SIZES } from './herd.mjs';
 const esc = (s) =>
@@ -251,7 +251,7 @@ export function skinShopHTML(s, catalog = SHEEP_SKINS) {
     newSkins = catalog.filter((x) => !x.starter);
   const tile = (skin) => {
     const owned = w.owned.includes(skin.id),
-      selected = w.selected === skin.id,
+      selected = skinSelection(s).includes(skin.id),
       disabled = !owned && (skin.available === false || w.balance < skin.cost);
     return (
       '<section class="skin-tile ' +
@@ -273,12 +273,13 @@ export function skinShopHTML(s, catalog = SHEEP_SKINS) {
       '" data-skin="' +
       esc(skin.id) +
       '" ' +
-      (selected || disabled ? 'disabled' : '') +
+      (disabled ? 'disabled' : '') +
+      (owned ? ' aria-pressed="' + selected + '"' : '') +
       '>' +
       (selected
-        ? '使用中'
+        ? '已选 ✓'
         : owned
-          ? '使用'
+          ? '选入随机'
           : skin.available === false
             ? '即将上架'
             : w.balance < skin.cost
@@ -296,7 +297,7 @@ export function skinShopHTML(s, catalog = SHEEP_SKINS) {
     (w.selected === 'mixed' ? 'primary' : 'secondary') +
     '" data-action="skin-select" data-skin="mixed" aria-pressed="' +
     (w.selected === 'mixed') +
-    '">随机外观</button></div><h3 class="skin-section-heading">基础皮肤 · S001–S006</h3><div class="skin-grid">' +
+    '">全选已拥有</button></div><p class="muted">可多选：只在选中的皮肤中随机搭配；只选一款则统一使用。至少保留一款。</p><h3 class="skin-section-heading">基础皮肤 · S001–S006</h3><div class="skin-grid">' +
     catalog
       .filter((x) => x.starter)
       .map(tile)

@@ -17,7 +17,7 @@ import {
 import { dailyControls, dailyMetrics, dailyIdle, dailyFeedback } from './daily-view.mjs';
 import { matchesVocabulary, bindVocabularySearch } from './vocabulary-search.mjs';
 import { practiceShortcut } from './shortcuts.mjs';
-import { ensureWallet, selectSkin, redeemSkin } from './pasture-economy.mjs';
+import { ensureWallet, selectSkin, toggleSkin, redeemSkin } from './pasture-economy.mjs';
 import { syncNavigationIndicator } from './navigation.mjs';
 import {
   loadEnglishDefinitions,
@@ -2161,13 +2161,18 @@ function showSkins() {
   showModal(skinShopHTML(S));
 }
 function setSheepSkin(id) {
-  if (!selectSkin(S, id)) {
-    toast('请先兑换这款皮肤。');
+  const scroll = modal.querySelector('.modal-scroll')?.scrollTop || 0;
+  if (!(id === 'mixed' ? selectSkin(S, id) : toggleSkin(S, id))) {
+    toast('至少保留一款已拥有的皮肤。');
     return;
   }
   persist(0);
   render();
   showSkins();
+  modal.querySelector('.modal-scroll').scrollTop = scroll;
+  modal
+    .querySelector('[data-action="skin-select"][data-skin="' + id + '"]')
+    ?.focus({ preventScroll: true });
 }
 function exchangeSheepSkin(id) {
   const result = redeemSkin(S, id);

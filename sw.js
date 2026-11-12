@@ -1,4 +1,4 @@
-const CACHE = 'cijian-browser-v22-release-hardening';
+const CACHE = 'cijian-browser-v23-skin-selection';
 const SHELL = [
   '/',
   '/index.html',
