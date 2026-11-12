@@ -373,6 +373,7 @@ function hintInput(q, e) {
   );
 }
 function syncHintGeometry() {
+  if (!S) return;
   const q = current(),
     e = entry(),
     field = $('#answer-input'),
@@ -1800,6 +1801,7 @@ function letterHTML(word, text, copy) {
   );
 }
 function syncTypingGeometry() {
+  if (!S) return;
   const aux = S.aux,
     field = $('#aux-input'),
     letters = $('#letter-display'),
