@@ -1,4 +1,4 @@
-const CACHE = 'cijian-browser-v23-skin-selection';
+const CACHE = 'cijian-browser-v24-themed-wordbook';
 const SHELL = [
   '/',
   '/index.html',
