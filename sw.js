@@ -1,4 +1,4 @@
-const CACHE = 'cijian-browser-v27-verb-inflections';
+const CACHE = 'cijian-browser-v28-family-status';
 const SHELL = [
   '/',
   '/index.html',

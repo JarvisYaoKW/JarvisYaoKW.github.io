@@ -1811,3 +1811,8 @@ dialog:has(.typing-line) #aux-feedback.is-error {
     font-size: 15px;
   }
 }
+
+button.secondary.family-empty,
+button.secondary.family-empty:hover {
+  color: var(--red);
+}

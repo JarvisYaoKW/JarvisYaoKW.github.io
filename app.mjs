@@ -46,7 +46,7 @@ import {
   coinHistoryHTML,
 } from './herd-view.mjs';
 import { selectFamily, validFamilyMeaning } from './family-selection.mjs';
-import { familyForEntry, loadFamilyData } from './family-data.mjs';
+import { familyForEntry, loadFamilyData, familyDataLoaded } from './family-data.mjs';
 import {
   verbMeanings,
   selectVerbForms,
@@ -315,6 +315,10 @@ function practice() {
     e = entry();
   return `<main class="main practice-main" id="main-content" tabindex="-1">${practiceContext(S, { mobile: mobileLayout.matches, collapsed: !!S.settings.sidebarCollapsed })}${metrics()}${q && e ? question(q, e) : idle()}${!q && previousQuestion(S) ? `<div class="question-actions">${previousButton()}</div>` : ''}${pasturePeek(S)}<footer class="practice-footer"><span>${isDaily(S) ? '每日学习 · ' + (S.daily?.task?.day || '待生成任务') : '第 ' + r.number + ' 轮 · ' + (category(S) === 'typing' ? '完整拼写与字母提示共用进度' : '选择题进度')} · 自动保存</span><button data-action="keys" class="text-btn">键盘操作指南</button></footer></main>`;
 }
+function familyPracticeButton(e) {
+  const empty = familyDataLoaded(e.english) && !familyForEntry(e).length;
+  return `<button class="secondary${empty ? ' family-empty' : ''}" data-action="extend" data-family-button data-key="${esc(e.key)}">${empty ? '暂无派生词' : '派生词族'} <kbd>E</kbd></button>`;
+}
 function question(q, e) {
   const mode = questionMode(q);
   const isChoice = mode === 'choice';
@@ -332,7 +336,7 @@ function question(q, e) {
             '',
           )}</div>${q.options.length < 4 ? '<p class="muted">有效释义不足四组，本题使用 ' + q.options.length + ' 个选项。</p>' : ''}`
       : `<div class="meaning-prompt">${e.meanings.map((m) => `<p>${esc(m)}</p>`).join('')}</div>${englishBlock(e.english, e.supplement)}${mode === 'hint' && !q.finished ? hintInput(q, e) : `<div class="input-wrap ${q.finished ? q.outcome : q.tries ? 'retry' : ''}"><input id="answer-input" aria-label="输入英文答案" autocomplete="off" autocapitalize="off" spellcheck="false" lang="en" placeholder="在这里输入英文…" value="${esc(q.outcome === 'skipped' ? e.english : q.input)}" ${q.finished ? 'readonly' : ''}><span id="answer-state">${q.finished ? (q.outcome === 'correct' ? '✓' : q.outcome === 'skipped' ? '↷' : '×') : ''}</span></div>`}`
-  }<div class="feedback ${q.finished ? q.outcome : q.tries ? 'retry' : ''}" role="status">${isDaily(S) ? dailyFeedback(q, S) : q.finished ? (q.outcome === 'skipped' ? '↷ 已跳过，本题不计对错；本轮不再加练这个词。' : q.outcome === 'correct' ? (q.tries ? '✓ 已改对，本题计正确一次' : '✓ 回答正确。') : '× 两次机会已用完，本题计错误一次，已加入常错本。') : q.tries ? '第一次未答对，还可以尝试一次。' : isChoice ? '按数字键选择，也可以点击选项。' : '准备好后，按 Enter 检查答案。'}</div><div class="question-actions">${previousButton()}${q.finished ? `<button class="primary" data-action="next">${reviewNextLabel()} <kbd>Enter</kbd></button><button class="secondary" data-action="repeat">原词照打 <kbd>R</kbd></button><button class="secondary" data-action="extend">派生词族 <kbd>E</kbd></button>${selectVerbForms(e).some((form) => norm(form.word) !== e.key || !/^(?:动词)?原形$/.test(form.label)) ? `<button class="secondary" data-action="extend" data-kind="all">含动词变化 <kbd>Shift E</kbd></button>` : ''}` : `${isChoice ? '' : `<button class="primary" data-action="submit">检查答案 <kbd>Enter</kbd></button>`}<button class="secondary" data-action="skip">跳过 <kbd>Shift Enter</kbd></button>${q.tries ? '<button class="text-btn" data-action="repeat">临时照打 <kbd>Alt</kbd></button>' : ''}`}</div>${reviewedQuestion() && review.index < reviewLimit() - 1 ? '<button class="text-btn" data-action="resume-question">回到当前题</button>' : ''}${q.finished ? answerCard(e) : ''}</section>`;
+  }<div class="feedback ${q.finished ? q.outcome : q.tries ? 'retry' : ''}" role="status">${isDaily(S) ? dailyFeedback(q, S) : q.finished ? (q.outcome === 'skipped' ? '↷ 已跳过，本题不计对错；本轮不再加练这个词。' : q.outcome === 'correct' ? (q.tries ? '✓ 已改对，本题计正确一次' : '✓ 回答正确。') : '× 两次机会已用完，本题计错误一次，已加入常错本。') : q.tries ? '第一次未答对，还可以尝试一次。' : isChoice ? '按数字键选择，也可以点击选项。' : '准备好后，按 Enter 检查答案。'}</div><div class="question-actions">${previousButton()}${q.finished ? `<button class="primary" data-action="next">${reviewNextLabel()} <kbd>Enter</kbd></button><button class="secondary" data-action="repeat">原词照打 <kbd>R</kbd></button>${familyPracticeButton(e)}${selectVerbForms(e).some((form) => norm(form.word) !== e.key || !/^(?:动词)?原形$/.test(form.label)) ? `<button class="secondary" data-action="extend" data-kind="all">含动词变化 <kbd>Shift E</kbd></button>` : ''}` : `${isChoice ? '' : `<button class="primary" data-action="submit">检查答案 <kbd>Enter</kbd></button>`}<button class="secondary" data-action="skip">跳过 <kbd>Shift Enter</kbd></button>${q.tries ? '<button class="text-btn" data-action="repeat">临时照打 <kbd>Alt</kbd></button>' : ''}`}</div>${reviewedQuestion() && review.index < reviewLimit() - 1 ? '<button class="text-btn" data-action="resume-question">回到当前题</button>' : ''}${q.finished ? answerCard(e) : ''}</section>`;
 }
 function hintLetters(q, e) {
   const word = [...e.english],
@@ -605,7 +609,7 @@ function answerCard(e) {
           )
           .join('')
       : `<p class="muted">${resourceTasks.has(e.key) ? '正在补充例句…' : '暂无例句，可在编辑词条中补充。'}</p>`
-  }</div><details class="word-details"><summary>词形、词族与词源 <span>＋</span></summary>${forms.length ? `<h4>动词形态</h4><div class="word-chips">${forms.map((f) => `<span>${esc(f.word)} <small>${esc(f.label)}</small></span>`).join('')}</div>` : ''}${family.length ? `<h4>派生词族 · ${family.length} 项</h4><div class="word-chips">${family.map((f) => `<span>${esc(f.word)} <small>${esc(f.meaning || f.label || '相关派生词')}</small></span>`).join('')}</div>${family.some((f) => f.origin === 'wordnet') ? `<p class="muted"><a href="https://wordnet.princeton.edu/" target="_blank" rel="noopener noreferrer">词族资料 · WordNet</a> · <a href="/wordbooks/WordNet-LICENSE.txt" target="_blank" rel="noopener noreferrer">许可</a> · <a href="/wordbooks/families-NOTICE.txt" target="_blank" rel="noopener noreferrer">资料来源</a></p>` : ''}` : ''}${s?.pendingFamily?.length ? `<details class="pending-family"><summary>待补充词族（不进入默认练习） · ${s.pendingFamily.length}</summary><p class="muted">这些关联词的释义或优先级尚待确认。</p><div class="word-chips">${s.pendingFamily.map((f) => `<span>${esc(f.word)} <small>${esc(f.reason)}</small></span>`).join('')}</div></details>` : ''}<h4>词源记忆</h4><p class="etymology">${esc(s?.etymologyZh || s?.etymology || '尚无可核验的词源资料，可联网重试或手动补充。')}</p>${s?.etymologyZh ? `<p class="muted">${esc(s.etymologySource ? '词根线索来源：有道词典 · ' + s.etymologySource : '词源中文为机器翻译或手动补充，请结合原文理解。')}</p>` : ''}${s?.etymologyZh && s.etymology ? `<details><summary>查看 Wiktionary 词源参考</summary><p class="etymology">${esc(s.etymology)}</p></details>` : ''}<button class="secondary" data-action="extend" data-key="${esc(e.key)}">练习派生词族 <kbd>E</kbd></button><button class="text-btn" data-action="extend" data-kind="all" data-key="${esc(e.key)}">含动词变化 <kbd>Shift E</kbd></button></details><div class="source-row"><span>${sourceLinks(s) || esc(e.source)}</span><button class="text-btn" data-action="refresh-resource" data-key="${esc(e.key)}">${resourceTasks.has(e.key) ? '资料获取中…' : '联网补充 / 重试'}</button></div></div>`;
+  }</div><details class="word-details"><summary>词形、词族与词源 <span>＋</span></summary>${forms.length ? `<h4>动词形态</h4><div class="word-chips">${forms.map((f) => `<span>${esc(f.word)} <small>${esc(f.label)}</small></span>`).join('')}</div>` : ''}${family.length ? `<h4>派生词族 · ${family.length} 项</h4><div class="word-chips">${family.map((f) => `<span>${esc(f.word)} <small>${esc(f.meaning || f.label || '相关派生词')}</small></span>`).join('')}</div>${family.some((f) => f.origin === 'wordnet') ? `<p class="muted"><a href="https://wordnet.princeton.edu/" target="_blank" rel="noopener noreferrer">词族资料 · WordNet</a> · <a href="/wordbooks/WordNet-LICENSE.txt" target="_blank" rel="noopener noreferrer">许可</a> · <a href="/wordbooks/families-NOTICE.txt" target="_blank" rel="noopener noreferrer">资料来源</a></p>` : ''}` : ''}${s?.pendingFamily?.length ? `<details class="pending-family"><summary>待补充词族（不进入默认练习） · ${s.pendingFamily.length}</summary><p class="muted">这些关联词的释义或优先级尚待确认。</p><div class="word-chips">${s.pendingFamily.map((f) => `<span>${esc(f.word)} <small>${esc(f.reason)}</small></span>`).join('')}</div></details>` : ''}<h4>词源记忆</h4><p class="etymology">${esc(s?.etymologyZh || s?.etymology || '尚无可核验的词源资料，可联网重试或手动补充。')}</p>${s?.etymologyZh ? `<p class="muted">${esc(s.etymologySource ? '词根线索来源：有道词典 · ' + s.etymologySource : '词源中文为机器翻译或手动补充，请结合原文理解。')}</p>` : ''}${s?.etymologyZh && s.etymology ? `<details><summary>查看 Wiktionary 词源参考</summary><p class="etymology">${esc(s.etymology)}</p></details>` : ''}${familyPracticeButton(e)}<button class="text-btn" data-action="extend" data-kind="all" data-key="${esc(e.key)}">含动词变化 <kbd>Shift E</kbd></button></details><div class="source-row"><span>${sourceLinks(s) || esc(e.source)}</span><button class="text-btn" data-action="refresh-resource" data-key="${esc(e.key)}">${resourceTasks.has(e.key) ? '资料获取中…' : '联网补充 / 重试'}</button></div></div>`;
 }
 function library() {
   const cat = normalCategory(S);
@@ -1516,6 +1520,7 @@ function refreshAnswerOnly(key) {
 }
 async function ensureResources(e, force = false) {
   await loadFamilyData(e?.english).catch(() => null);
+  if (e) refreshAnswerOnly(e.key);
   if (!e || resourceTasks.has(e.key)) return resourceTasks.get(e?.key);
   if (
     e.supplement?.familyVersion === 2 &&
@@ -2088,7 +2093,7 @@ async function auxAdd() {
 function detail(key, load = true) {
   const e = S.entries[key];
   showModal(
-    `<h2>${esc(e.english)}</h2>${badges(e, isChoice ? 'choice' : 'typing')}${answerCard(e)}<div class="modal-actions"><button class="secondary" data-action="edit" data-key="${esc(key)}">编辑词条</button><button class="text-btn" data-action="close-modal">关闭</button></div>`,
+    `<h2>${esc(e.english)}</h2>${badges(e, category(S))}${answerCard(e)}<div class="modal-actions"><button class="secondary" data-action="edit" data-key="${esc(key)}">编辑词条</button><button class="text-btn" data-action="close-modal">关闭</button></div>`,
   );
   if (load) {
     const refresh = () => {

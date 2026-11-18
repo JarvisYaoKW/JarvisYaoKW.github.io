@@ -9,6 +9,11 @@ const key = (value) =>
     .trim()
     .toLowerCase();
 
+export function familyDataLoaded(word) {
+  const letter = key(word).slice(0, 1);
+  return !/^[a-z]$/.test(letter) || loaded.has(letter);
+}
+
 export async function loadFamilyData(word = '') {
   const letter = key(word).slice(0, 1);
   if (!/^[a-z]$/.test(letter) || loaded.has(letter)) return bundled;
