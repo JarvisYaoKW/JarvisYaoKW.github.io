@@ -39,7 +39,7 @@ export function filterDefinitionPOS(value, pos) {
   return { ...value, senses: matches };
 }
 export function englishForPOS(word, supplement = {}, pos = '', data = bundled) {
-  if (supplement.origin === 'wordnet') {
+  if (supplement?.origin === 'wordnet') {
     const exact = filterDefinitionPOS(
       {
         senses: cleanDefinitions(supplement.englishDefinitions),

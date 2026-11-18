@@ -1,7 +1,15 @@
 // Resolve practice commands without consuming letters while the learner is typing.
 export function practiceShortcut(event, { auxiliary = '', finished = false, choice = false } = {}) {
-  if (event.isComposing || event.repeat || event.altKey || event.metaKey) return null;
+  if (event.isComposing || event.repeat || event.metaKey) return null;
   const key = event.key;
+  if (event.altKey) {
+    return !auxiliary && !event.ctrlKey && event.shiftKey && (key === 'Alt' || key === 'Shift')
+      ? 'previous'
+      : null;
+  }
+  if (auxiliary === 'empty-extend') {
+    return key === 'Enter' && !event.shiftKey && !event.ctrlKey ? 'close-extend' : null;
+  }
   if (event.ctrlKey) {
     return key === 'Enter' && !event.shiftKey && auxiliary === 'extend' ? 'add' : null;
   }
@@ -10,7 +18,6 @@ export function practiceShortcut(event, { auxiliary = '', finished = false, choi
     return auxiliary ? 'aux-next' : finished ? 'next' : choice ? null : 'submit';
   }
   if (auxiliary) return null;
-  if (key === 'PageUp' && !event.shiftKey) return 'previous';
   if (!finished) {
     return choice && !event.shiftKey && /^[1-4]$/.test(key) ? `choose-${key}` : null;
   }

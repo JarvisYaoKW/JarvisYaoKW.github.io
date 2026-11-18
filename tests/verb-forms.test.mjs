@@ -42,7 +42,7 @@ test('adjective-only and untagged senses do not silently acquire tenses', () => 
 
 test('a verb after the noun is recognised and drills show only its verb meaning', () => {
   const items = selectVerbForms(mixed());
-  assert.equal(items.length, 3);
+  assert.equal(items.length, 4);
   for (const item of items) {
     assert.equal(item.meaning, 'v. 把……归因于');
     assert.equal(item.pos, 'verb');
@@ -72,6 +72,36 @@ test('the same spelling merges past and past participle labels without repeated 
   const items = selectVerbForms(mixed());
   assert.equal(items.filter((item) => item.word === 'attributed').length, 1);
   assert.equal(items.find((item) => item.word === 'attributed').label, '过去式 / 过去分词');
+});
+
+test('offline forms fill partial and missing data, including common irregular forms', () => {
+  const examples = {
+    begin: ['begins', 'beginning', 'began', 'begun'],
+    go: ['goes', 'going', 'went', 'gone'],
+    be: ['am', 'is', 'are', 'being', 'was', 'were', 'been'],
+    have: ['has', 'having', 'had'],
+    stop: ['stops', 'stopping', 'stopped'],
+    babysit: ['babysits', 'babysitting', 'babysat'],
+    overcome: ['overcomes', 'overcoming', 'overcame', 'overcome'],
+    picnic: ['picnics', 'picnicking', 'picnicked'],
+  };
+  for (const [english, expected] of Object.entries(examples)) {
+    const entry = { english, meanings: ['v. 测试释义'] };
+    const items = extensionItems(entry);
+    assert.deepEqual(new Set(items.map((item) => item.word)), new Set([english, ...expected]));
+  }
+  const hit = selectVerbForms({ english: 'hit', meanings: ['v. 击中'] });
+  assert.equal(hit.find((item) => item.word === 'hit').label, '原形 / 过去式 / 过去分词');
+  assert.deepEqual(selectVerbForms({ english: 'will', meanings: ['aux. 将'] }), []);
+  assert.deepEqual(selectVerbForms({ english: 'hammer', meanings: ['n. 锤子'] }), []);
+  for (const [meaning, past, absent] of [
+    ['说谎', 'lied', 'lay'],
+    ['躺着', 'lay', 'lied'],
+  ]) {
+    const items = selectVerbForms({ english: 'lie', meanings: ['v. ' + meaning] });
+    assert.ok(items.some((form) => form.word === past && form.label.includes('过去式')));
+    assert.ok(!items.some((form) => form.word === absent));
+  }
 });
 
 test('noun plurals and explicitly restricted or non-verb form records are excluded', () => {
@@ -119,6 +149,7 @@ test('verb drills do not fall back to a bundled noun definition', () => {
     },
   };
   assert.deepEqual(englishForPOS('attribute', {}, 'verb', data).senses, []);
+  assert.deepEqual(englishForPOS('attribute', null, 'verb', data).senses, []);
   const found = englishForPOS(
     'attribute',
     {

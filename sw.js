@@ -1,4 +1,4 @@
-const CACHE = 'cijian-browser-v26-daily-modes';
+const CACHE = 'cijian-browser-v27-verb-inflections';
 const SHELL = [
   '/',
   '/index.html',
@@ -26,6 +26,7 @@ const SHELL = [
   '/family-selection.mjs',
   '/family-data.mjs',
   '/verb-forms.mjs',
+  '/verb-inflections.mjs',
   '/runtime-config.mjs',
   '/web-services.mjs',
   '/browser-storage.mjs',

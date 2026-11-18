@@ -11,3 +11,12 @@ English definitions: pinned ECDICT definition field (MIT). Small gaps have indep
 Word-family supplement: WordNet 3.0 lexical derivations and adverb/adjective links,
 with POS-matched ECDICT Chinese meanings and IPA. Details, source versions,
 additional IPA attribution and licenses: families-NOTICE.txt and families-lock.json.
+
+Offline verb inflections (verb-inflections.mjs): p/d/i/3 exchange fields from the
+same pinned ECDICT CSV (MIT). Missing fields are supplemented from UniMorph English,
+adapted by selecting verbal inflections, matching ECDICT lemmas and merging slots.
+UniMorph English contributors, source: https://github.com/unimorph/eng/tree/66e0e9e8e2dcd196da081a25a48e5c1fe3d8b49b
+UniMorph-derived data is offered under CC BY-SA 3.0:
+https://creativecommons.org/licenses/by-sa/3.0/
+tools/build-verb-inflections.py also records common spelling variants checked
+against Cambridge Dictionary (https://dictionary.cambridge.org/).

@@ -47,7 +47,12 @@ import {
 } from './herd-view.mjs';
 import { selectFamily, validFamilyMeaning } from './family-selection.mjs';
 import { familyForEntry, loadFamilyData } from './family-data.mjs';
-import { verbMeanings, selectVerbForms, extensionItems } from './verb-forms.mjs';
+import {
+  verbMeanings,
+  selectVerbForms,
+  extensionItems,
+  hasCompleteVerbForms,
+} from './verb-forms.mjs';
 import { senseModel, splitMeanings } from './pronunciation-view.mjs';
 import {
   previousQuestion as normalPreviousQuestion,
@@ -130,7 +135,7 @@ function previousButton() {
     (previousQuestion(S, reviewedQuestion() ? review.index : undefined)
       ? ''
       : 'disabled title="还没有上一题"') +
-    '>上一题 <kbd>Page Up</kbd></button>'
+    '>上一题 <kbd>Alt Shift</kbd></button>'
   );
 }
 function reviewLimit() {
@@ -327,7 +332,7 @@ function question(q, e) {
             '',
           )}</div>${q.options.length < 4 ? '<p class="muted">有效释义不足四组，本题使用 ' + q.options.length + ' 个选项。</p>' : ''}`
       : `<div class="meaning-prompt">${e.meanings.map((m) => `<p>${esc(m)}</p>`).join('')}</div>${englishBlock(e.english, e.supplement)}${mode === 'hint' && !q.finished ? hintInput(q, e) : `<div class="input-wrap ${q.finished ? q.outcome : q.tries ? 'retry' : ''}"><input id="answer-input" aria-label="输入英文答案" autocomplete="off" autocapitalize="off" spellcheck="false" lang="en" placeholder="在这里输入英文…" value="${esc(q.outcome === 'skipped' ? e.english : q.input)}" ${q.finished ? 'readonly' : ''}><span id="answer-state">${q.finished ? (q.outcome === 'correct' ? '✓' : q.outcome === 'skipped' ? '↷' : '×') : ''}</span></div>`}`
-  }<div class="feedback ${q.finished ? q.outcome : q.tries ? 'retry' : ''}" role="status">${isDaily(S) ? dailyFeedback(q, S) : q.finished ? (q.outcome === 'skipped' ? '↷ 已跳过，本题不计对错；本轮不再加练这个词。' : q.outcome === 'correct' ? (q.tries ? '✓ 已改对，本题计正确一次' : '✓ 回答正确。') : '× 两次机会已用完，本题计错误一次，已加入常错本。') : q.tries ? '第一次未答对，还可以尝试一次。' : isChoice ? '按数字键选择，也可以点击选项。' : '准备好后，按 Enter 检查答案。'}</div><div class="question-actions">${previousButton()}${q.finished ? `<button class="primary" data-action="next">${reviewNextLabel()} <kbd>Enter</kbd></button><button class="secondary" data-action="repeat">原词照打 <kbd>R</kbd></button><button class="secondary" data-action="extend">派生词族 <kbd>E</kbd></button>` : `${isChoice ? '' : `<button class="primary" data-action="submit">检查答案 <kbd>Enter</kbd></button>`}<button class="secondary" data-action="skip">跳过 <kbd>Shift Enter</kbd></button>${q.tries ? '<button class="text-btn" data-action="repeat">临时照打 <kbd>Alt</kbd></button>' : ''}`}</div>${reviewedQuestion() && review.index < reviewLimit() - 1 ? '<button class="text-btn" data-action="resume-question">回到当前题</button>' : ''}${q.finished ? answerCard(e) : ''}</section>`;
+  }<div class="feedback ${q.finished ? q.outcome : q.tries ? 'retry' : ''}" role="status">${isDaily(S) ? dailyFeedback(q, S) : q.finished ? (q.outcome === 'skipped' ? '↷ 已跳过，本题不计对错；本轮不再加练这个词。' : q.outcome === 'correct' ? (q.tries ? '✓ 已改对，本题计正确一次' : '✓ 回答正确。') : '× 两次机会已用完，本题计错误一次，已加入常错本。') : q.tries ? '第一次未答对，还可以尝试一次。' : isChoice ? '按数字键选择，也可以点击选项。' : '准备好后，按 Enter 检查答案。'}</div><div class="question-actions">${previousButton()}${q.finished ? `<button class="primary" data-action="next">${reviewNextLabel()} <kbd>Enter</kbd></button><button class="secondary" data-action="repeat">原词照打 <kbd>R</kbd></button><button class="secondary" data-action="extend">派生词族 <kbd>E</kbd></button>${selectVerbForms(e).some((form) => norm(form.word) !== e.key || !/^(?:动词)?原形$/.test(form.label)) ? `<button class="secondary" data-action="extend" data-kind="all">含动词变化 <kbd>Shift E</kbd></button>` : ''}` : `${isChoice ? '' : `<button class="primary" data-action="submit">检查答案 <kbd>Enter</kbd></button>`}<button class="secondary" data-action="skip">跳过 <kbd>Shift Enter</kbd></button>${q.tries ? '<button class="text-btn" data-action="repeat">临时照打 <kbd>Alt</kbd></button>' : ''}`}</div>${reviewedQuestion() && review.index < reviewLimit() - 1 ? '<button class="text-btn" data-action="resume-question">回到当前题</button>' : ''}${q.finished ? answerCard(e) : ''}</section>`;
 }
 function hintLetters(q, e) {
   const word = [...e.english],
@@ -1757,21 +1762,26 @@ async function extend(key, scope = 'all') {
   }
   stopAudio();
   showModal('<h2>正在准备拓展练习…</h2><p>正在读取词形与同源词资料。</p>');
-  await loadFamilyData(e?.english).catch(() => null);
+  const loading = modal.querySelector('.modal-scroll');
+  await loadFamilyData(e.english).catch(() => null);
+  if (!modal.open || !loading.isConnected) return;
   let items = extensionItems(e);
   if (
     scope !== 'family' &&
-    (!items.length || (verbMeanings(e).length && !selectVerbForms(e).length))
+    (!items.length ||
+      (verbMeanings(e).length &&
+        !hasCompleteVerbForms(items.filter((item) => item.type === 'form'))))
   ) {
     await ensureResources(e);
     items = extensionItems(e);
   }
-  if (!modal.open) return;
+  if (!modal.open || !loading.isConnected) return;
   if (scope === 'family') items = items.filter((item) => item.type === 'family');
   if (!items.length) {
     showModal(
-      `<h2>暂时没有可练的拓展资料</h2><p>${verbMeanings(e).length ? '动词词形或同源词资料待补充。' : '当前收录释义没有常用动词义，暂无可练的同源词。'}</p><div class="modal-actions"><button class="primary" data-action="edit" data-key="${esc(e.key)}">编辑词条</button><button class="secondary" data-action="close-modal">返回答案</button></div>`,
+      `<h2>暂时没有可练的拓展资料</h2><p>${verbMeanings(e).length ? '动词词形或同源词资料待补充。' : '当前收录释义没有常用动词义，暂无可练的同源词。'}</p><div class="modal-actions"><button class="primary" data-action="edit" data-key="${esc(e.key)}">编辑词条</button><button class="secondary" data-action="close-modal" data-empty-extension autofocus>返回答案 <kbd>Enter</kbd></button></div>`,
     );
+    modal.querySelector('[data-empty-extension]').focus();
     return;
   }
   S.aux = {
@@ -2202,7 +2212,7 @@ function exchangeSheepSkin(id) {
 const actions = {
   help: () =>
     showModal(
-      '<h2>使用帮助与反馈</h2><p>1. 在练习设置选择词库和学习计划。每日学习按总量上限优先安排到期复习，剩余名额用于新词；新词目标设为 0 即只复习。</p><p>2. 新词先照打，隔几个词再回忆。Enter 检查，再按 Enter 继续；两次都错计一次错误。Shift Enter 暂缓，Page Up 回看上一题。</p><p>3. 答案后 R 照打、E 词族、F 收藏、P 发音；词族中 Ctrl Enter 加入主词库。</p><p>学习记录保存在当前浏览器和网址。换设备或清理浏览器前，请在设置导出完整备份。缓存过的资料可离线使用，部分词典与发音需要联网，查询词可能发送给相应服务。</p><p>请定期导出备份。本机快照也会随站点数据被清除，不能代替导出文件。</p><a href="https://github.com/JarvisYaoKW/JarvisYaoKW.github.io/issues/new" target="_blank" rel="noopener noreferrer">反馈问题 ↗</a><p>请提供设备、浏览器、复现步骤或错误词条，避免公开个人完整备份。</p>',
+      '<h2>使用帮助与反馈</h2><p>1. 在练习设置选择词库和学习计划。每日学习按总量上限优先安排到期复习，剩余名额用于新词；新词目标设为 0 即只复习。</p><p>2. 新词先照打，隔几个词再回忆。Enter 检查，再按 Enter 继续；两次都错计一次错误。Shift Enter 暂缓，Alt Shift 回看上一题。</p><p>3. 答案后 R 照打、E 词族、F 收藏、P 发音；词族中 Ctrl Enter 加入主词库。</p><p>学习记录保存在当前浏览器和网址。换设备或清理浏览器前，请在设置导出完整备份。缓存过的资料可离线使用，部分词典与发音需要联网，查询词可能发送给相应服务。</p><p>请定期导出备份。本机快照也会随站点数据被清除，不能代替导出文件。</p><a href="https://github.com/JarvisYaoKW/JarvisYaoKW.github.io/issues/new" target="_blank" rel="noopener noreferrer">反馈问题 ↗</a><p>请提供设备、浏览器、复现步骤或错误词条，避免公开个人完整备份。</p>',
     ),
   snapshots: async () => {
     const rows = await listSnapshots();
@@ -2398,7 +2408,7 @@ const actions = {
   },
   keys: () =>
     showModal(
-      '<h2>键盘操作指南</h2><div class="keyboard-list"><p><kbd>Enter</kbd> 检查答案；答案展示后下一题；照打和词族中检查 / 继续</p><p><kbd>空格</kbd> 答案展示后也可进入下一题</p><p><kbd>Shift</kbd> ＋ <kbd>Enter</kbd> 跳过正式题或当前词族词</p><p><kbd>Page Up</kbd> 上一题</p><p><kbd>1</kbd> ～ <kbd>4</kbd> 选择中文释义</p><p>以下单键只在正式答案展示后生效，输入英文时正常打字：</p><p><kbd>R</kbd> 原词照打（原 <kbd>Alt</kbd> 入口保留）</p><p><kbd>E</kbd> 派生词族；<kbd>Shift</kbd> ＋ <kbd>E</kbd> 含动词变化</p><p><kbd>F</kbd> 收藏 / 取消收藏；<kbd>P</kbd> 播放发音</p><p><kbd>Ctrl</kbd> ＋ <kbd>Enter</kbd> 词族练习中加入主词库</p><p><kbd>Esc</kbd> 关闭弹窗，返回原题；照打中也可按 <kbd>Alt</kbd> 退出</p></div>',
+      '<h2>键盘操作指南</h2><div class="keyboard-list"><p><kbd>Enter</kbd> 检查答案；答案展示后下一题；照打和词族中检查 / 继续</p><p><kbd>空格</kbd> 答案展示后也可进入下一题</p><p><kbd>Shift</kbd> ＋ <kbd>Enter</kbd> 跳过正式题或当前词族词</p><p><kbd>Alt</kbd> ＋ <kbd>Shift</kbd> 上一题</p><p><kbd>1</kbd> ～ <kbd>4</kbd> 选择中文释义</p><p>以下单键只在正式答案展示后生效，输入英文时正常打字：</p><p><kbd>R</kbd> 原词照打（原 <kbd>Alt</kbd> 入口保留）</p><p><kbd>E</kbd> 派生词族；<kbd>Shift</kbd> ＋ <kbd>E</kbd> 含动词变化</p><p><kbd>F</kbd> 收藏 / 取消收藏；<kbd>P</kbd> 播放发音</p><p><kbd>Ctrl</kbd> ＋ <kbd>Enter</kbd> 词族练习中加入主词库</p><p>没有派生词时，按 <kbd>Enter</kbd> 返回</p><p><kbd>Esc</kbd> 关闭弹窗，返回原题；照打中也可按 <kbd>Alt</kbd> 退出</p></div>',
     ),
 };
 document.addEventListener('click', (ev) => {
@@ -2416,7 +2426,7 @@ document.addEventListener('click', (ev) => {
 document.addEventListener('keydown', (ev) => {
   if (!S || ev.isComposing) return;
   if (configOpen || ev.target.closest?.('.practice-sidebar,.header')) return;
-  if (altPending && ev.key !== 'Alt') altPending = false;
+  if (altPending && (ev.key !== 'Alt' || ev.shiftKey)) altPending = false;
   if (
     ev.key === 'Alt' &&
     !ev.ctrlKey &&
@@ -2429,7 +2439,18 @@ document.addEventListener('keydown', (ev) => {
     if (!ev.repeat && (S.aux?.type === 'repeat' || !modal.open)) altPending = true;
     return;
   }
-  if (modal.open && !S.aux) return;
+  if (modal.open && !S.aux) {
+    const emptyExtension = modal.querySelector('[data-empty-extension]');
+    const command = practiceShortcut(ev, { auxiliary: emptyExtension ? 'empty-extend' : '' });
+    if (command === 'close-extend' && !ev.target.closest?.('[data-action="edit"]')) {
+      ev.preventDefault();
+      closeModal();
+    } else if (command === 'previous' && modal.querySelector('[data-action="previous"]')) {
+      ev.preventDefault();
+      previous();
+    }
+    return;
+  }
   if (
     !modal.open &&
     (view !== 'practice' ||
@@ -2438,13 +2459,12 @@ document.addEventListener('keydown', (ev) => {
   )
     return;
   const q = current();
-  if (!q && !S.aux) return;
   const command = practiceShortcut(ev, {
     auxiliary: S.aux?.type || '',
     finished: !!q?.finished,
     choice: questionMode(q) === 'choice',
   });
-  if (!command) return;
+  if (!command || (!q && !S.aux && command !== 'previous')) return;
   ev.preventDefault();
   if (S.aux) {
     if (command === 'add') auxAdd();
